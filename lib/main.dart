@@ -1,7 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'config/service_locator.dart' as di;
+import 'core/theme/app_theme.dart';
+import 'core/localization/app_localizations.dart';
+import 'core/providers/settings_provider.dart';
+import 'features/auth/presentation/providers/auth_provider.dart';
+import 'features/auth/presentation/pages/login_page.dart';
+import 'features/home/presentation/widgets/settings_drawer.dart';
 import 'dart:async';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await di.init();
   runApp(const MindVoiceApp());
 }
 
@@ -10,16 +21,31 @@ class MindVoiceApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Mind Voice',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        brightness: Brightness.dark,
-        scaffoldBackgroundColor: const Color(0xFF020617), // Slate 950
-        primaryColor: const Color(0xFF7C3AED), // Violet 600
-        fontFamily: 'sans-serif',
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => di.sl<AuthProvider>()),
+        ChangeNotifierProvider(create: (_) => di.sl<SettingsProvider>()),
+      ],
+      child: Consumer<SettingsProvider>(
+        builder: (context, settings, child) {
+          return MaterialApp(
+            title: 'Mind Voice',
+            debugShowCheckedModeBanner: false,
+            theme: AppTheme.lightTheme,
+            darkTheme: AppTheme.darkTheme,
+            themeMode: settings.themeMode,
+            locale: settings.locale,
+            supportedLocales: const [Locale('en', ''), Locale('es', '')],
+            localizationsDelegates: const [
+              AppLocalizations.delegate,
+              GlobalMaterialLocalizations.delegate,
+              GlobalWidgetsLocalizations.delegate,
+              GlobalCupertinoLocalizations.delegate,
+            ],
+            home: const LoginPage(),
+          );
+        },
       ),
-      home: const MainScreen(),
     );
   }
 }
@@ -32,7 +58,7 @@ class MainScreen extends StatefulWidget {
 }
 
 class _MainScreenState extends State<MainScreen> {
-  int _currentIndex = 1; // Inicia en la pestaña de grabación
+  int _currentIndex = 1;
   bool _isRecording = false;
   int _seconds = 0;
   Timer? _timer;
@@ -60,6 +86,7 @@ class _MainScreenState extends State<MainScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      endDrawer: const SettingsDrawer(),
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -96,9 +123,11 @@ class _MainScreenState extends State<MainScreen> {
           ],
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.settings_outlined, color: Colors.blueGrey),
-            onPressed: () {},
+          Builder(
+            builder: (context) => IconButton(
+              icon: const Icon(Icons.settings_outlined, color: Colors.blueGrey),
+              onPressed: () => Scaffold.of(context).openEndDrawer(),
+            ),
           ),
           const SizedBox(width: 8),
         ],
@@ -200,7 +229,6 @@ class _MainScreenState extends State<MainScreen> {
   }
 }
 
-// --- VISTA DE GRABACIÓN ---
 class RecordPage extends StatelessWidget {
   final bool isRecording;
   final String timerText;
@@ -228,7 +256,7 @@ class RecordPage extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
-                  color: Colors.white,
+                  // Removed hardcoded color to allow theme
                 ),
               ),
               SizedBox(height: 8),
@@ -290,7 +318,6 @@ class RecordPage extends StatelessWidget {
   }
 }
 
-// --- VISTA DE BIBLIOTECA ---
 class LibraryPage extends StatelessWidget {
   const LibraryPage({super.key});
 
@@ -329,9 +356,9 @@ class LibraryPage extends StatelessWidget {
                   margin: const EdgeInsets.only(bottom: 12),
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF1E293B).withOpacity(0.5),
+                    color: Theme.of(context).cardColor.withOpacity(0.5),
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: const Color(0xFF334155)),
+                    border: Border.all(color: Theme.of(context).dividerColor),
                   ),
                   child: Row(
                     children: [
@@ -381,7 +408,6 @@ class LibraryPage extends StatelessWidget {
   }
 }
 
-// --- VISTA DE INSIGHTS ---
 class InsightsPage extends StatelessWidget {
   const InsightsPage({super.key});
 
@@ -423,9 +449,18 @@ class InsightsPage extends StatelessWidget {
           const SizedBox(height: 20),
           Row(
             children: [
-              Expanded(child: _infoCard(Icons.biotech, "Mind Map", "14 Nodos")),
+              Expanded(
+                child: _infoCard(
+                  context,
+                  Icons.biotech,
+                  "Mind Map",
+                  "14 Nodos",
+                ),
+              ),
               const SizedBox(width: 15),
-              Expanded(child: _infoCard(Icons.share, "Compartir", "PDF, MD")),
+              Expanded(
+                child: _infoCard(context, Icons.share, "Compartir", "PDF, MD"),
+              ),
             ],
           ),
           const SizedBox(height: 20),
@@ -441,13 +476,18 @@ class InsightsPage extends StatelessWidget {
     );
   }
 
-  Widget _infoCard(IconData icon, String title, String sub) {
+  Widget _infoCard(
+    BuildContext context,
+    IconData icon,
+    String title,
+    String sub,
+  ) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFF1E293B),
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFF334155)),
+        border: Border.all(color: Theme.of(context).dividerColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -484,7 +524,6 @@ class InsightsPage extends StatelessWidget {
   }
 }
 
-// Widget auxiliar para la animación de onda
 class _AnimatedWave extends StatelessWidget {
   final double size;
   final double opacity;

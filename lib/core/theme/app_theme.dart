@@ -1,58 +1,34 @@
 import 'package:flutter/material.dart';
+import 'app_colors.dart';
+import 'app_text_styles.dart';
 
 class AppTheme {
-  // Brand Colors
-  static const Color _brandPrimary = Color(0xFF6200EE);
-  static const Color _brandSecondary = Color(0xFF03DAC6);
-  static const Color _brandError = Color(0xFFB00020);
-
-  // Neutral Colors (Dark)
-  // Neutral Colors (Dark)
-  static const Color _darkBackground = Color(0xFF121212);
-  static const Color _darkSurface = Color(0xFF1E1E1E);
-
-  // Neutral Colors (Light)
-  static const Color _lightBackground = Color(0xFFF5F5F7);
-  static const Color _lightSurface = Colors.white;
-
   static final ThemeData lightTheme = ThemeData(
     useMaterial3: true,
     brightness: Brightness.light,
     colorScheme: const ColorScheme.light(
-      primary: _brandPrimary,
-      secondary: _brandSecondary,
-      error: _brandError,
-      surface: _lightSurface,
-      background: _lightBackground,
+      primary: AppColors.primary,
+      secondary: AppColors.secondary,
+      error: AppColors.error,
+      surface: AppColors.lightSurface,
+      background: AppColors.lightBackground,
     ),
-    scaffoldBackgroundColor: _lightBackground,
+    scaffoldBackgroundColor: AppColors.lightBackground,
     appBarTheme: const AppBarTheme(
-      backgroundColor: _lightSurface,
+      backgroundColor: AppColors.lightSurface,
       elevation: 0,
       centerTitle: true,
-      titleTextStyle: TextStyle(
-        color: Colors.black87,
-        fontSize: 20,
-        fontWeight: FontWeight.w600,
-        letterSpacing: 0.5,
-      ),
-      iconTheme: IconThemeData(color: Colors.black87),
+      titleTextStyle: AppTextStyles.headlineMedium,
+      iconTheme: IconThemeData(color: AppColors.textPrimaryLight),
     ),
     cardTheme: CardThemeData(
-      color: _lightSurface,
+      color: AppColors.lightSurface,
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
     ),
-    floatingActionButtonTheme: const FloatingActionButtonThemeData(
-      backgroundColor: _brandPrimary,
-      foregroundColor: Colors.white,
-    ),
     textTheme: const TextTheme(
-      headlineMedium: TextStyle(
-        color: Colors.black87,
-        fontWeight: FontWeight.bold,
-      ),
-      bodyMedium: TextStyle(color: Colors.black87, fontSize: 16),
+      headlineMedium: AppTextStyles.headlineMedium,
+      bodyMedium: AppTextStyles.bodyMedium,
     ),
   );
 
@@ -60,40 +36,32 @@ class AppTheme {
     useMaterial3: true,
     brightness: Brightness.dark,
     colorScheme: const ColorScheme.dark(
-      primary: _brandPrimary,
-      secondary: _brandSecondary,
-      error: _brandError,
-      surface: _darkSurface,
-      background: _darkBackground,
+      primary: AppColors.primary,
+      secondary: AppColors.secondary,
+      error: AppColors.error,
+      surface: AppColors.darkSurface,
+      background: AppColors.darkBackground,
     ),
-    scaffoldBackgroundColor: _darkBackground,
+    scaffoldBackgroundColor: AppColors.darkBackground,
     appBarTheme: const AppBarTheme(
-      backgroundColor: _darkSurface,
+      backgroundColor: AppColors.darkBackground, // Transparent feel
       elevation: 0,
       centerTitle: true,
-      titleTextStyle: TextStyle(
-        color: Colors.white,
-        fontSize: 20,
-        fontWeight: FontWeight.w600,
-        letterSpacing: 0.5,
-      ),
-      iconTheme: IconThemeData(color: Colors.white),
+      titleTextStyle: AppTextStyles.headlineMedium,
+      iconTheme: IconThemeData(color: AppColors.textPrimaryDark),
     ),
     cardTheme: CardThemeData(
-      color: _darkSurface,
+      color: AppColors.darkSurface,
       elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
     ),
-    floatingActionButtonTheme: const FloatingActionButtonThemeData(
-      backgroundColor: _brandSecondary,
-      foregroundColor: Colors.black,
-    ),
-    textTheme: const TextTheme(
-      headlineMedium: TextStyle(
-        color: Colors.white,
-        fontWeight: FontWeight.bold,
-      ),
-      bodyMedium: TextStyle(color: Colors.white70, fontSize: 16),
-    ),
+    textTheme:
+        const TextTheme(
+          headlineMedium: AppTextStyles.headlineMedium,
+          bodyMedium: AppTextStyles.bodyMedium,
+        ).apply(
+          bodyColor: AppColors.textPrimaryDark,
+          displayColor: AppColors.textPrimaryDark,
+        ),
   );
 }

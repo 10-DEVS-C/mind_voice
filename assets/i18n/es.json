@@ -1,0 +1,17 @@
+{
+  "loginTitle": "Iniciar Sesión",
+  "signupTitle": "Registrarse",
+  "emailLabel": "Correo Electrónico",
+  "passwordLabel": "Contraseña",
+  "loginButton": "Entrar",
+  "signupButton": "Crear Cuenta",
+  "noAccount": "¿No tienes cuenta? Regístrate",
+  "hasAccount": "¿Ya tienes cuenta? Inicia sesión",
+  "settings": "Configuración",
+  "theme": "Tema",
+  "language": "Idioma",
+  "system": "Sistema",
+  "light": "Claro",
+  "dark": "Oscuro",
+  "logout": "Cerrar Sesión"
+}

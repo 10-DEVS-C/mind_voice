@@ -1,0 +1,17 @@
+{
+    "loginTitle": "Login",
+    "signupTitle": "Sign Up",
+    "emailLabel": "Email",
+    "passwordLabel": "Password",
+    "loginButton": "Login",
+    "signupButton": "Create Account",
+    "noAccount": "Don't have an account? Sign up",
+    "hasAccount": "Already have an account? Login",
+    "settings": "Settings",
+    "theme": "Theme",
+    "language": "Language",
+    "system": "System",
+    "light": "Light",
+    "dark": "Dark",
+    "logout": "Logout"
+}

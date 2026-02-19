@@ -5,4 +5,5 @@ abstract class AudioRecorderRepository {
   Future<Result<List<Recording>>> getRecordings();
   Future<Result<Recording>> saveRecording(Recording recording);
   Future<Result<void>> deleteRecording(String id);
+  Future<Result<void>> updateRecording(Recording recording);
 }

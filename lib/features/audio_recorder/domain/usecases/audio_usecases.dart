@@ -31,3 +31,13 @@ class DeleteRecordingUseCase {
     return repository.deleteRecording(id);
   }
 }
+
+class UpdateRecordingUseCase {
+  final AudioRecorderRepository repository;
+
+  UpdateRecordingUseCase(this.repository);
+
+  Future<Result<void>> call(Recording recording) {
+    return repository.updateRecording(recording);
+  }
+}

@@ -7,7 +7,15 @@ class RecordingModel extends Recording {
     required String name,
     required DateTime date,
     required Duration duration,
-  }) : super(id: id, path: path, name: name, date: date, duration: duration);
+    String? transcription,
+  }) : super(
+         id: id,
+         path: path,
+         name: name,
+         date: date,
+         duration: duration,
+         transcription: transcription,
+       );
 
   factory RecordingModel.fromJson(Map<String, dynamic> json) {
     return RecordingModel(
@@ -16,6 +24,7 @@ class RecordingModel extends Recording {
       name: json['name'],
       date: DateTime.parse(json['date']),
       duration: Duration(milliseconds: json['durationMs']),
+      transcription: json['transcription'],
     );
   }
 
@@ -26,6 +35,7 @@ class RecordingModel extends Recording {
       'name': name,
       'date': date.toIso8601String(),
       'durationMs': duration.inMilliseconds,
+      'transcription': transcription,
     };
   }
 }

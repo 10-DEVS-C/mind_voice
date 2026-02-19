@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'dart:async';
 import '../../../../features/library/presentation/pages/library_page.dart';
 import '../../../../features/audio_recorder/presentation/pages/record_page.dart';
 import '../../../../features/insights/presentation/pages/insights_page.dart';
 import '../../../../features/home/presentation/widgets/settings_drawer.dart';
+import '../../../../features/audio_recorder/presentation/providers/audio_recorder_provider.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -14,21 +16,30 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   int _currentIndex = 1;
-  bool _isRecording = false;
-  int _seconds = 0;
   Timer? _timer;
+  int _seconds = 0;
 
-  void _toggleRecording() {
+  @override
+  void initState() {
+    super.initState();
+  }
+
+  void _startTimer() {
+    _timer?.cancel();
+    _seconds = 0;
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (mounted) setState(() => _seconds++);
+    });
+  }
+
+  void _stopTimer() {
+    _timer?.cancel();
+    if (mounted) setState(() => _seconds = 0);
+  }
+
+  void _handleTabChange(int index) {
     setState(() {
-      _isRecording = !_isRecording;
-      if (_isRecording) {
-        _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-          setState(() => _seconds++);
-        });
-      } else {
-        _timer?.cancel();
-        _seconds = 0;
-      }
+      _currentIndex = index;
     });
   }
 
@@ -40,6 +51,16 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
+    final audioProvider = context.watch<AudioRecorderProvider>();
+    final isRecording = audioProvider.isRecording;
+
+    // Sync timer with provider state
+    if (isRecording && (_timer == null || !_timer!.isActive)) {
+      _startTimer();
+    } else if (!isRecording && _timer != null && _timer!.isActive) {
+      _stopTimer();
+    }
+
     return Scaffold(
       endDrawer: const SettingsDrawer(),
       appBar: AppBar(
@@ -92,20 +113,26 @@ class _HomePageState extends State<HomePage> {
       body: IndexedStack(
         index: _currentIndex,
         children: [
-          const LibraryPage(),
+          LibraryPage(onNavigateToInsights: () => _handleTabChange(2)),
           RecordPage(
-            isRecording: _isRecording,
+            isRecording: isRecording,
             timerText: _formatTime(_seconds),
-            onToggle: _toggleRecording,
+            onToggle: () {
+              if (isRecording) {
+                context.read<AudioRecorderProvider>().stopRecording();
+              } else {
+                context.read<AudioRecorderProvider>().startRecording();
+              }
+            },
           ),
           const InsightsPage(),
         ],
       ),
-      bottomNavigationBar: _buildBottomNav(),
+      bottomNavigationBar: _buildBottomNav(isRecording),
     );
   }
 
-  Widget _buildBottomNav() {
+  Widget _buildBottomNav(bool isRecording) {
     return Container(
       height: 90,
       decoration: BoxDecoration(
@@ -118,7 +145,7 @@ class _HomePageState extends State<HomePage> {
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
           _navItem(0, Icons.book_outlined, "Audios"),
-          _recordButton(),
+          _recordButton(isRecording),
           _navItem(2, Icons.bar_chart_outlined, "IA Data"),
         ],
       ),
@@ -128,7 +155,7 @@ class _HomePageState extends State<HomePage> {
   Widget _navItem(int index, IconData icon, String label) {
     bool isActive = _currentIndex == index;
     return GestureDetector(
-      onTap: () => setState(() => _currentIndex = index),
+      onTap: () => _handleTabChange(index),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -151,24 +178,29 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _recordButton() {
+  Widget _recordButton(bool isRecording) {
     return GestureDetector(
       onTap: () {
-        if (_currentIndex == 1) {
-          _toggleRecording();
+        if (_currentIndex != 1) {
+          _handleTabChange(1);
+          return;
         }
-        setState(() => _currentIndex = 1);
+        if (isRecording) {
+          context.read<AudioRecorderProvider>().stopRecording();
+        } else {
+          context.read<AudioRecorderProvider>().startRecording();
+        }
       },
       child: Container(
         transform: Matrix4.translationValues(0, -20, 0),
         width: 65,
         height: 65,
         decoration: BoxDecoration(
-          color: _isRecording ? Colors.red : const Color(0xFF7C3AED),
+          color: isRecording ? Colors.red : const Color(0xFF7C3AED),
           shape: BoxShape.circle,
           boxShadow: [
             BoxShadow(
-              color: (_isRecording ? Colors.red : const Color(0xFF7C3AED))
+              color: (isRecording ? Colors.red : const Color(0xFF7C3AED))
                   .withOpacity(0.4),
               blurRadius: 15,
               spreadRadius: 2,
@@ -177,7 +209,7 @@ class _HomePageState extends State<HomePage> {
           border: Border.all(color: const Color(0xFF020617), width: 4),
         ),
         child: Icon(
-          _isRecording ? Icons.stop : Icons.mic,
+          isRecording ? Icons.stop : Icons.mic,
           color: Colors.white,
           size: 32,
         ),

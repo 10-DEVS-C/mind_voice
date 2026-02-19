@@ -11,5 +11,8 @@ class Recording {
     required this.name,
     required this.date,
     required this.duration,
+    this.transcription,
   });
+
+  final String? transcription;
 }

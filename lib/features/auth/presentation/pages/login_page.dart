@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:jwt_decoder/jwt_decoder.dart';
+import '../../../../config/service_locator.dart';
+import '../../../../core/services/shared_prefs_service.dart';
 import '../../../../core/constants/app_icons.dart';
 import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -20,6 +23,22 @@ class _LoginPageState extends State<LoginPage> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
+
+  Future<void> _checkAuthStatus() async {
+    final token = sl<SharedPrefsService>().getToken();
+    if (token != null && token.isNotEmpty && !JwtDecoder.isExpired(token)) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const HomePage()),
+      );
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _checkAuthStatus();
+  }
 
   @override
   Widget build(BuildContext context) {

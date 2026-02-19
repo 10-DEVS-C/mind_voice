@@ -1,4 +1,7 @@
 import 'package:flutter/foundation.dart';
+import 'package:record/record.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 import 'package:mind_voice/features/audio_recorder/domain/entities/recording.dart';
 import 'package:mind_voice/features/audio_recorder/domain/usecases/audio_usecases.dart';
@@ -7,11 +10,14 @@ class AudioRecorderProvider extends ChangeNotifier {
   final GetRecordingsUseCase _getRecordingsUseCase;
   final SaveRecordingUseCase _saveRecordingUseCase;
   final DeleteRecordingUseCase _deleteRecordingUseCase;
+  final UpdateRecordingUseCase _updateRecordingUseCase;
 
   List<Recording> _recordings = [];
   bool _isLoading = false;
   String? _errorMessage;
-  bool _isRecording = false; // Simulated recording state
+  bool _isRecording = false;
+  final AudioRecorder _audioRecorder = AudioRecorder();
+  DateTime? _startTime;
 
   List<Recording> get recordings => _recordings;
   bool get isLoading => _isLoading;
@@ -22,9 +28,11 @@ class AudioRecorderProvider extends ChangeNotifier {
     required GetRecordingsUseCase getRecordingsUseCase,
     required SaveRecordingUseCase saveRecordingUseCase,
     required DeleteRecordingUseCase deleteRecordingUseCase,
+    required UpdateRecordingUseCase updateRecordingUseCase,
   }) : _getRecordingsUseCase = getRecordingsUseCase,
        _saveRecordingUseCase = saveRecordingUseCase,
-       _deleteRecordingUseCase = deleteRecordingUseCase;
+       _deleteRecordingUseCase = deleteRecordingUseCase,
+       _updateRecordingUseCase = updateRecordingUseCase;
 
   Future<void> loadRecordings() async {
     _isLoading = true;
@@ -34,7 +42,9 @@ class AudioRecorderProvider extends ChangeNotifier {
     final result = await _getRecordingsUseCase();
 
     if (result.isSuccess) {
-      _recordings = result.data!;
+      _recordings = List.from(result.data!);
+      // Sort by date descending
+      _recordings.sort((a, b) => b.date.compareTo(a.date));
     } else {
       _errorMessage = result.error;
     }
@@ -46,7 +56,7 @@ class AudioRecorderProvider extends ChangeNotifier {
   Future<void> addRecording(Recording recording) async {
     final result = await _saveRecordingUseCase(recording);
     if (result.isSuccess) {
-      _recordings.add(result.data!);
+      _recordings.insert(0, result.data!);
       notifyListeners();
     }
   }
@@ -59,22 +69,88 @@ class AudioRecorderProvider extends ChangeNotifier {
     }
   }
 
-  void startRecording() {
-    _isRecording = true;
-    notifyListeners();
+  Future<void> updateRecordingTitle(String id, String newName) async {
+    final index = _recordings.indexWhere((rec) => rec.id == id);
+    if (index != -1) {
+      final recording = _recordings[index];
+      final updatedRecording = Recording(
+        id: recording.id,
+        path: recording.path,
+        name: newName,
+        date: recording.date,
+        duration: recording.duration,
+        transcription: recording.transcription,
+      );
+
+      final result = await _updateRecordingUseCase(updatedRecording);
+      if (result.isSuccess) {
+        _recordings[index] = updatedRecording;
+        notifyListeners();
+      } else {
+        _errorMessage = result.error;
+        notifyListeners();
+      }
+    }
   }
 
-  void stopRecording() async {
-    _isRecording = false;
-    // Simulate saving a recording after stopping
-    final newRecording = Recording(
-      id: '', // Repo will assign ID
-      path: 'dummy/path.aac',
-      name: 'New Recording ${DateTime.now().second}',
-      date: DateTime.now(),
-      duration: const Duration(seconds: 10), // Dummy duration
-    );
-    await addRecording(newRecording);
-    notifyListeners();
+  Future<void> startRecording() async {
+    if (_isRecording) return;
+    try {
+      if (await _audioRecorder.hasPermission()) {
+        // Permission granted
+      } else {
+        final status = await Permission.microphone.request();
+        if (status != PermissionStatus.granted) {
+          _errorMessage = "Permissions not granted";
+          notifyListeners();
+          return;
+        }
+      }
+
+      final directory = await getApplicationDocumentsDirectory();
+      final String path =
+          '${directory.path}/recording_${DateTime.now().millisecondsSinceEpoch}.m4a';
+
+      await _audioRecorder.start(const RecordConfig(), path: path);
+      _isRecording = true;
+      _startTime = DateTime.now();
+      notifyListeners();
+    } catch (e) {
+      _errorMessage = e.toString();
+      notifyListeners();
+    }
+  }
+
+  Future<void> stopRecording() async {
+    if (!_isRecording) return;
+    try {
+      final path = await _audioRecorder.stop();
+      _isRecording = false;
+      final endTime = DateTime.now();
+      final duration = endTime.difference(_startTime ?? endTime);
+
+      if (path != null) {
+        final newRecording = Recording(
+          id: '', // Repo generates ID
+          path: path,
+          name: 'Recording ${DateTime.now().toIso8601String()}',
+          date: DateTime.now(),
+          duration: duration,
+          transcription:
+              "Transcripción dummy para demostración. El audio se ha grabado correctamente en: $path. Aquí iría el texto procesado por la IA.",
+        );
+        await addRecording(newRecording);
+      }
+      notifyListeners();
+    } catch (e) {
+      _errorMessage = e.toString();
+      notifyListeners();
+    }
+  }
+
+  @override
+  void dispose() {
+    _audioRecorder.dispose();
+    super.dispose();
   }
 }

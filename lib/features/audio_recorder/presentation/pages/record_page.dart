@@ -44,19 +44,22 @@ class RecordPage extends StatelessWidget {
                 const _AnimatedWave(size: 200, opacity: 0.2),
                 const _AnimatedWave(size: 160, opacity: 0.3),
               ],
-              Container(
-                width: 140,
-                height: 140,
-                decoration: BoxDecoration(
-                  color: isRecording
-                      ? Colors.red.withOpacity(0.1)
-                      : const Color(0xFF7C3AED).withOpacity(0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  isRecording ? Icons.multitrack_audio : Icons.mic_none,
-                  size: 60,
-                  color: isRecording ? Colors.red : const Color(0xFF7C3AED),
+              GestureDetector(
+                onTap: onToggle,
+                child: Container(
+                  width: 140,
+                  height: 140,
+                  decoration: BoxDecoration(
+                    color: isRecording
+                        ? Colors.red.withOpacity(0.1)
+                        : const Color(0xFF7C3AED).withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    isRecording ? Icons.multitrack_audio : Icons.mic_none,
+                    size: 60,
+                    color: isRecording ? Colors.red : const Color(0xFF7C3AED),
+                  ),
                 ),
               ),
             ],

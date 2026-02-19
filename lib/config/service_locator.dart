@@ -8,6 +8,10 @@ import '../features/auth/domain/repositories/auth_repository.dart';
 import '../features/auth/domain/usecases/login_user.dart';
 import '../features/auth/domain/usecases/register_user.dart';
 import '../features/auth/presentation/providers/auth_provider.dart';
+import '../features/audio_recorder/data/repositories/audio_recorder_repository_impl.dart';
+import '../features/audio_recorder/domain/repositories/audio_recorder_repository.dart';
+import '../features/audio_recorder/domain/usecases/audio_usecases.dart';
+import '../features/audio_recorder/presentation/providers/audio_recorder_provider.dart';
 import '../core/providers/settings_provider.dart';
 
 final sl = GetIt.instance;
@@ -31,6 +35,28 @@ Future<void> init() async {
   // Data sources
   sl.registerLazySingleton<AuthRemoteDataSource>(
     () => AuthRemoteDataSourceImpl(client: sl()),
+  );
+
+  // Use cases
+  sl.registerLazySingleton(() => GetRecordingsUseCase(sl()));
+  sl.registerLazySingleton(() => SaveRecordingUseCase(sl()));
+  sl.registerLazySingleton(() => DeleteRecordingUseCase(sl()));
+  sl.registerLazySingleton(() => UpdateRecordingUseCase(sl()));
+
+  // Feature - Audio Recorder
+  // Provider
+  sl.registerFactory(
+    () => AudioRecorderProvider(
+      getRecordingsUseCase: sl(),
+      saveRecordingUseCase: sl(),
+      deleteRecordingUseCase: sl(),
+      updateRecordingUseCase: sl(),
+    ),
+  );
+
+  // Repository
+  sl.registerLazySingleton<AudioRecorderRepository>(
+    () => AudioRecorderRepositoryImpl(sl()),
   );
 
   //! Core

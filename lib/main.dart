@@ -6,6 +6,7 @@ import 'core/theme/app_theme.dart';
 import 'core/localization/app_localizations.dart';
 import 'core/providers/settings_provider.dart';
 import 'features/auth/presentation/providers/auth_provider.dart';
+import 'features/audio_recorder/presentation/providers/audio_recorder_provider.dart';
 import 'features/auth/presentation/pages/login_page.dart';
 // import 'features/home/presentation/pages/home_page.dart'; // Can import this if I change the home in MaterialApp
 
@@ -24,6 +25,7 @@ class MindVoiceApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => di.sl<AuthProvider>()),
         ChangeNotifierProvider(create: (_) => di.sl<SettingsProvider>()),
+        ChangeNotifierProvider(create: (_) => di.sl<AudioRecorderProvider>()),
       ],
       child: Consumer<SettingsProvider>(
         builder: (context, settings, child) {

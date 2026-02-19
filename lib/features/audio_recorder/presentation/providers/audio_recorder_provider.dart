@@ -34,12 +34,12 @@ class AudioRecorderProvider extends ChangeNotifier {
        _deleteRecordingUseCase = deleteRecordingUseCase,
        _updateRecordingUseCase = updateRecordingUseCase;
 
-  Future<void> loadRecordings() async {
+  Future<void> loadRecordings(String userId) async {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
 
-    final result = await _getRecordingsUseCase();
+    final result = await _getRecordingsUseCase(userId);
 
     if (result.isSuccess) {
       _recordings = List.from(result.data!);
@@ -53,23 +53,27 @@ class AudioRecorderProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> addRecording(Recording recording) async {
-    final result = await _saveRecordingUseCase(recording);
+  Future<void> addRecording(Recording recording, String userId) async {
+    final result = await _saveRecordingUseCase(recording, userId);
     if (result.isSuccess) {
       _recordings.insert(0, result.data!);
       notifyListeners();
     }
   }
 
-  Future<void> deleteRecording(String id) async {
-    final result = await _deleteRecordingUseCase(id);
+  Future<void> deleteRecording(String id, String userId) async {
+    final result = await _deleteRecordingUseCase(id, userId);
     if (result.isSuccess) {
       _recordings.removeWhere((rec) => rec.id == id);
       notifyListeners();
     }
   }
 
-  Future<void> updateRecordingTitle(String id, String newName) async {
+  Future<void> updateRecordingTitle(
+    String id,
+    String newName,
+    String userId,
+  ) async {
     final index = _recordings.indexWhere((rec) => rec.id == id);
     if (index != -1) {
       final recording = _recordings[index];
@@ -82,7 +86,7 @@ class AudioRecorderProvider extends ChangeNotifier {
         transcription: recording.transcription,
       );
 
-      final result = await _updateRecordingUseCase(updatedRecording);
+      final result = await _updateRecordingUseCase(updatedRecording, userId);
       if (result.isSuccess) {
         _recordings[index] = updatedRecording;
         notifyListeners();
@@ -121,7 +125,7 @@ class AudioRecorderProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> stopRecording() async {
+  Future<void> stopRecording(String userId) async {
     if (!_isRecording) return;
     try {
       final path = await _audioRecorder.stop();
@@ -139,13 +143,20 @@ class AudioRecorderProvider extends ChangeNotifier {
           transcription:
               "Transcripción dummy para demostración. El audio se ha grabado correctamente en: $path. Aquí iría el texto procesado por la IA.",
         );
-        await addRecording(newRecording);
+        await addRecording(newRecording, userId);
       }
       notifyListeners();
     } catch (e) {
       _errorMessage = e.toString();
       notifyListeners();
     }
+  }
+
+  void clear() {
+    _recordings = [];
+    _errorMessage = null;
+    _isLoading = false;
+    notifyListeners();
   }
 
   @override

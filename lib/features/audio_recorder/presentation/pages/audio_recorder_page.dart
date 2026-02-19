@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:mind_voice/features/audio_recorder/presentation/providers/audio_recorder_provider.dart';
 import 'package:mind_voice/features/audio_recorder/presentation/widgets/recorder_control.dart';
 import 'package:mind_voice/features/audio_recorder/presentation/widgets/recording_tile.dart';
+import 'package:mind_voice/features/auth/presentation/providers/auth_provider.dart';
 
 class AudioRecorderPage extends StatefulWidget {
   const AudioRecorderPage({super.key});
@@ -17,12 +18,17 @@ class _AudioRecorderPageState extends State<AudioRecorderPage> {
     super.initState();
     // Load initial data
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<AudioRecorderProvider>().loadRecordings();
+      final userId = context.read<AuthProvider>().user?.id;
+      if (userId != null) {
+        context.read<AudioRecorderProvider>().loadRecordings(userId);
+      }
     });
   }
 
   @override
   Widget build(BuildContext context) {
+    final userId = context.watch<AuthProvider>().user?.id;
+
     return Scaffold(
       appBar: AppBar(title: const Text('Mind Voice Recorder')),
       body: Consumer<AudioRecorderProvider>(
@@ -45,7 +51,11 @@ class _AudioRecorderPageState extends State<AudioRecorderPage> {
               final recording = provider.recordings[index];
               return RecordingTile(
                 recording: recording,
-                onDelete: () => provider.deleteRecording(recording.id),
+                onDelete: () {
+                  if (userId != null) {
+                    provider.deleteRecording(recording.id, userId);
+                  }
+                },
               );
             },
           );
@@ -57,7 +67,11 @@ class _AudioRecorderPageState extends State<AudioRecorderPage> {
           return RecorderControl(
             isRecording: provider.isRecording,
             onStart: provider.startRecording,
-            onStop: provider.stopRecording,
+            onStop: () {
+              if (userId != null) {
+                provider.stopRecording(userId);
+              }
+            },
           );
         },
       ),

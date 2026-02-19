@@ -7,8 +7,8 @@ class GetRecordingsUseCase {
 
   GetRecordingsUseCase(this.repository);
 
-  Future<Result<List<Recording>>> call() {
-    return repository.getRecordings();
+  Future<Result<List<Recording>>> call(String userId) {
+    return repository.getRecordings(userId);
   }
 }
 
@@ -17,8 +17,8 @@ class SaveRecordingUseCase {
 
   SaveRecordingUseCase(this.repository);
 
-  Future<Result<Recording>> call(Recording recording) {
-    return repository.saveRecording(recording);
+  Future<Result<Recording>> call(Recording recording, String userId) {
+    return repository.saveRecording(recording, userId);
   }
 }
 
@@ -27,8 +27,8 @@ class DeleteRecordingUseCase {
 
   DeleteRecordingUseCase(this.repository);
 
-  Future<Result<void>> call(String id) {
-    return repository.deleteRecording(id);
+  Future<Result<void>> call(String id, String userId) {
+    return repository.deleteRecording(id, userId);
   }
 }
 
@@ -37,7 +37,7 @@ class UpdateRecordingUseCase {
 
   UpdateRecordingUseCase(this.repository);
 
-  Future<Result<void>> call(Recording recording) {
-    return repository.updateRecording(recording);
+  Future<Result<void>> call(Recording recording, String userId) {
+    return repository.updateRecording(recording, userId);
   }
 }

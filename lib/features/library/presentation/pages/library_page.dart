@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../../../../features/audio_recorder/presentation/providers/audio_recorder_provider.dart';
 import '../../../../features/audio_recorder/domain/entities/recording.dart';
 import '../../../../features/audio_recorder/presentation/widgets/recording_player_widget.dart';
+import '../../../../features/auth/presentation/providers/auth_provider.dart';
 
 class LibraryPage extends StatefulWidget {
   final VoidCallback onNavigateToInsights;
@@ -17,10 +18,11 @@ class _LibraryPageState extends State<LibraryPage> {
   @override
   void initState() {
     super.initState();
-    // Load recordings if empty or refresh needed.
-    // For now, we assume provider keeps state, but good to refresh on init
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<AudioRecorderProvider>().loadRecordings();
+      final userId = context.read<AuthProvider>().user?.id;
+      if (userId != null) {
+        context.read<AudioRecorderProvider>().loadRecordings(userId);
+      }
     });
   }
 
@@ -226,6 +228,8 @@ class _LibraryPageState extends State<LibraryPage> {
 
   void _showEditTitleDialog(BuildContext context, Recording recording) {
     final titleController = TextEditingController(text: recording.name);
+    final userId = context.read<AuthProvider>().user?.id;
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -242,11 +246,12 @@ class _LibraryPageState extends State<LibraryPage> {
           ),
           ElevatedButton(
             onPressed: () {
-              if (titleController.text.isNotEmpty) {
+              if (titleController.text.isNotEmpty && userId != null) {
                 // Update in Provider
                 context.read<AudioRecorderProvider>().updateRecordingTitle(
                   recording.id,
                   titleController.text,
+                  userId,
                 );
 
                 Navigator.pop(context); // Close dialog

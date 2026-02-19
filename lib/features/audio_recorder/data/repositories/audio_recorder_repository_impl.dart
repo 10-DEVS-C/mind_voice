@@ -9,39 +9,44 @@ import 'package:mind_voice/features/audio_recorder/domain/repositories/audio_rec
 
 class AudioRecorderRepositoryImpl implements AudioRecorderRepository {
   final SharedPrefsService _sharedPrefsService;
-  List<RecordingModel> _recordings = [];
-  bool _initialized = false;
 
   AudioRecorderRepositoryImpl(this._sharedPrefsService);
 
-  Future<void> _init() async {
-    if (_initialized) return;
-    final jsonString = _sharedPrefsService.prefs.getString('recordings');
+  String _getKey(String userId) => 'recordings_$userId';
+
+  Future<List<RecordingModel>> _loadFromPrefs(String userId) async {
+    final jsonString = _sharedPrefsService.prefs.getString(_getKey(userId));
     if (jsonString != null) {
       try {
         final List<dynamic> decoded = jsonDecode(jsonString);
-        _recordings = decoded.map((e) => RecordingModel.fromJson(e)).toList();
+        return decoded.map((e) => RecordingModel.fromJson(e)).toList();
       } catch (e) {
         print("Error loading recordings: $e");
       }
     }
-    _initialized = true;
+    return [];
   }
 
-  Future<void> _saveToPrefs() async {
-    final jsonString = jsonEncode(_recordings.map((e) => e.toJson()).toList());
-    await _sharedPrefsService.prefs.setString('recordings', jsonString);
-  }
-
-  @override
-  Future<Result<List<Recording>>> getRecordings() async {
-    await _init();
-    return Result.success(List.from(_recordings));
+  Future<void> _saveToPrefs(
+    String userId,
+    List<RecordingModel> recordings,
+  ) async {
+    final jsonString = jsonEncode(recordings.map((e) => e.toJson()).toList());
+    await _sharedPrefsService.prefs.setString(_getKey(userId), jsonString);
   }
 
   @override
-  Future<Result<Recording>> saveRecording(Recording recording) async {
-    await _init();
+  Future<Result<List<Recording>>> getRecordings(String userId) async {
+    final recordings = await _loadFromPrefs(userId);
+    return Result.success(List.from(recordings));
+  }
+
+  @override
+  Future<Result<Recording>> saveRecording(
+    Recording recording,
+    String userId,
+  ) async {
+    final recordings = await _loadFromPrefs(userId);
     final model = RecordingModel(
       id: const Uuid().v4(), // Generate new ID
       path: recording.path,
@@ -50,25 +55,28 @@ class AudioRecorderRepositoryImpl implements AudioRecorderRepository {
       duration: recording.duration,
       transcription: recording.transcription,
     );
-    _recordings.add(model);
-    await _saveToPrefs();
+    recordings.add(model);
+    await _saveToPrefs(userId, recordings);
     return Result.success(model);
   }
 
   @override
-  Future<Result<void>> deleteRecording(String id) async {
-    await _init();
-    _recordings.removeWhere((rec) => rec.id == id);
-    await _saveToPrefs();
+  Future<Result<void>> deleteRecording(String id, String userId) async {
+    final recordings = await _loadFromPrefs(userId);
+    recordings.removeWhere((rec) => rec.id == id);
+    await _saveToPrefs(userId, recordings);
     return Result.success(null);
   }
 
   @override
-  Future<Result<void>> updateRecording(Recording recording) async {
-    await _init();
-    final index = _recordings.indexWhere((rec) => rec.id == recording.id);
+  Future<Result<void>> updateRecording(
+    Recording recording,
+    String userId,
+  ) async {
+    final recordings = await _loadFromPrefs(userId);
+    final index = recordings.indexWhere((rec) => rec.id == recording.id);
     if (index != -1) {
-      _recordings[index] = RecordingModel(
+      recordings[index] = RecordingModel(
         id: recording.id,
         path: recording.path,
         name: recording.name,
@@ -76,7 +84,7 @@ class AudioRecorderRepositoryImpl implements AudioRecorderRepository {
         duration: recording.duration,
         transcription: recording.transcription,
       );
-      await _saveToPrefs();
+      await _saveToPrefs(userId, recordings);
       return Result.success(null);
     }
     return Result.failure("Recording not found");

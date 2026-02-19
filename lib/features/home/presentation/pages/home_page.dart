@@ -6,6 +6,7 @@ import '../../../../features/audio_recorder/presentation/pages/record_page.dart'
 import '../../../../features/insights/presentation/pages/insights_page.dart';
 import '../../../../features/home/presentation/widgets/settings_drawer.dart';
 import '../../../../features/audio_recorder/presentation/providers/audio_recorder_provider.dart';
+import '../../../../features/auth/presentation/providers/auth_provider.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -53,6 +54,7 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     final audioProvider = context.watch<AudioRecorderProvider>();
     final isRecording = audioProvider.isRecording;
+    final userId = context.watch<AuthProvider>().user?.id;
 
     // Sync timer with provider state
     if (isRecording && (_timer == null || !_timer!.isActive)) {
@@ -119,7 +121,9 @@ class _HomePageState extends State<HomePage> {
             timerText: _formatTime(_seconds),
             onToggle: () {
               if (isRecording) {
-                context.read<AudioRecorderProvider>().stopRecording();
+                if (userId != null) {
+                  context.read<AudioRecorderProvider>().stopRecording(userId);
+                }
               } else {
                 context.read<AudioRecorderProvider>().startRecording();
               }
@@ -128,11 +132,11 @@ class _HomePageState extends State<HomePage> {
           const InsightsPage(),
         ],
       ),
-      bottomNavigationBar: _buildBottomNav(isRecording),
+      bottomNavigationBar: _buildBottomNav(isRecording, userId),
     );
   }
 
-  Widget _buildBottomNav(bool isRecording) {
+  Widget _buildBottomNav(bool isRecording, String? userId) {
     return Container(
       height: 90,
       decoration: BoxDecoration(
@@ -145,7 +149,7 @@ class _HomePageState extends State<HomePage> {
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
           _navItem(0, Icons.book_outlined, "Audios"),
-          _recordButton(isRecording),
+          _recordButton(isRecording, userId),
           _navItem(2, Icons.bar_chart_outlined, "IA Data"),
         ],
       ),
@@ -178,7 +182,7 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _recordButton(bool isRecording) {
+  Widget _recordButton(bool isRecording, String? userId) {
     return GestureDetector(
       onTap: () {
         if (_currentIndex != 1) {
@@ -186,7 +190,9 @@ class _HomePageState extends State<HomePage> {
           return;
         }
         if (isRecording) {
-          context.read<AudioRecorderProvider>().stopRecording();
+          if (userId != null) {
+            context.read<AudioRecorderProvider>().stopRecording(userId);
+          }
         } else {
           context.read<AudioRecorderProvider>().startRecording();
         }

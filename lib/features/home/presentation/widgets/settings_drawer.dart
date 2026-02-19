@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/providers/settings_provider.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../audio_recorder/presentation/providers/audio_recorder_provider.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../auth/presentation/pages/login_page.dart';
 
@@ -56,6 +57,11 @@ class SettingsDrawer extends StatelessWidget {
             onTap: () {
               // Close drawer
               Navigator.pop(context);
+              // Clear user data
+              Provider.of<AudioRecorderProvider>(
+                context,
+                listen: false,
+              ).clear();
               // Logout
               Provider.of<AuthProvider>(context, listen: false).logout();
               // Navigate to Login

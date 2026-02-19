@@ -52,7 +52,17 @@ class _RecordingPlayerWidgetState extends State<RecordingPlayerWidget> {
     });
 
     // Set source but don't play
-    _audioPlayer.setSource(DeviceFileSource(widget.audioPath));
+    _setSource();
+  }
+
+  Future<void> _setSource() async {
+    try {
+      await _audioPlayer.setSource(DeviceFileSource(widget.audioPath));
+      // Optionally update duration if known immediately?
+      // No, let listener handle it.
+    } catch (e) {
+      debugPrint("Error setting audio source: $e");
+    }
   }
 
   @override
@@ -104,10 +114,14 @@ class _RecordingPlayerWidgetState extends State<RecordingPlayerWidget> {
                     Slider(
                       value: _position.inMilliseconds.toDouble().clamp(
                         0.0,
-                        _duration.inMilliseconds.toDouble(),
+                        _duration.inMilliseconds.toDouble() > 0
+                            ? _duration.inMilliseconds.toDouble()
+                            : 0.0,
                       ),
                       min: 0.0,
-                      max: _duration.inMilliseconds.toDouble(),
+                      max: _duration.inMilliseconds.toDouble() > 0
+                          ? _duration.inMilliseconds.toDouble()
+                          : 0.0,
                       onChanged: (value) async {
                         final position = Duration(milliseconds: value.toInt());
                         await _audioPlayer.seek(position);

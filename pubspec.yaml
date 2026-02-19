@@ -20,5 +20,9 @@ dependencies:
   uuid: any
   intl: any
   get_it: any
+  http: ^1.6.0
+  shared_preferences: ^2.5.4
+  jwt_decoder: ^2.0.1
+  dartz: ^0.10.1
 
 

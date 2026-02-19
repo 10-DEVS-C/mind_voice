@@ -7,7 +7,7 @@ import '../../../../shared/widgets/custom_button.dart'; // We will create this
 import '../../../../shared/widgets/custom_text_field.dart'; // We will create this
 import '../providers/auth_provider.dart';
 import 'signup_page.dart';
-import '../../../../main.dart'; // For MainScreen navigation
+import '../../../home/presentation/pages/home_page.dart'; // For HomePage navigation
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -19,7 +19,7 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  final _formKey = GlobalKey<FormState>(); // Basic validation
+  final _formKey = GlobalKey<FormState>();
 
   @override
   Widget build(BuildContext context) {
@@ -82,7 +82,7 @@ class _LoginPageState extends State<LoginPage> {
                     if (success && context.mounted) {
                       Navigator.pushReplacement(
                         context,
-                        MaterialPageRoute(builder: (_) => const MainScreen()),
+                        MaterialPageRoute(builder: (_) => const HomePage()),
                       );
                     }
                   },

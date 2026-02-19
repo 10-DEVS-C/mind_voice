@@ -5,7 +5,7 @@ import '../../../../core/localization/app_localizations.dart';
 import '../../../../shared/widgets/custom_button.dart';
 import '../../../../shared/widgets/custom_text_field.dart';
 import '../providers/auth_provider.dart';
-import '../../../../main.dart'; // For MainScreen navigation
+import '../../../home/presentation/pages/home_page.dart';
 
 class SignupPage extends StatefulWidget {
   const SignupPage({super.key});
@@ -77,7 +77,7 @@ class _SignupPageState extends State<SignupPage> {
                     if (success && context.mounted) {
                       Navigator.pushAndRemoveUntil(
                         context,
-                        MaterialPageRoute(builder: (_) => const MainScreen()),
+                        MaterialPageRoute(builder: (_) => const HomePage()),
                         (route) => false,
                       );
                     }

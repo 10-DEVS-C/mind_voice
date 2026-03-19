@@ -15,10 +15,19 @@ class SignupPage extends StatefulWidget {
 }
 
 class _SignupPageState extends State<SignupPage> {
+  final _usernameController = TextEditingController();
+  final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
+
+  String? _requiredValidator(String? value, AppLocalizations l10n) {
+    if (value == null || value.trim().isEmpty) {
+      return l10n.translate('requiredField');
+    }
+    return null;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -38,10 +47,33 @@ class _SignupPageState extends State<SignupPage> {
               children: [
                 const SizedBox(height: 16),
                 CustomTextField(
+                  controller: _usernameController,
+                  label: l10n.translate('usernameLabel'),
+                  icon: AppIcons.signup,
+                  keyboardType: TextInputType.text,
+                  autocorrect: false,
+                  enableSuggestions: false,
+                  textCapitalization: TextCapitalization.none,
+                  validator: (value) => _requiredValidator(value, l10n),
+                ),
+                const SizedBox(height: 16),
+                CustomTextField(
+                  controller: _nameController,
+                  label: l10n.translate('nameLabel'),
+                  icon: AppIcons.signup,
+                  keyboardType: TextInputType.name,
+                  validator: (value) => _requiredValidator(value, l10n),
+                ),
+                const SizedBox(height: 16),
+                CustomTextField(
                   controller: _emailController,
                   label: l10n.translate('emailLabel'),
                   icon: AppIcons.email,
                   keyboardType: TextInputType.emailAddress,
+                  autocorrect: false,
+                  enableSuggestions: false,
+                  textCapitalization: TextCapitalization.none,
+                  validator: (value) => _requiredValidator(value, l10n),
                 ),
                 const SizedBox(height: 16),
                 CustomTextField(
@@ -49,30 +81,44 @@ class _SignupPageState extends State<SignupPage> {
                   label: l10n.translate('passwordLabel'),
                   icon: AppIcons.password,
                   obscureText: true,
+                  autocorrect: false,
+                  enableSuggestions: false,
+                  textCapitalization: TextCapitalization.none,
+                  validator: (value) => _requiredValidator(value, l10n),
                 ),
                 const SizedBox(height: 16),
                 CustomTextField(
                   controller: _confirmPasswordController,
-                  label:
-                      "Confirm ${l10n.translate('passwordLabel')}", // Simplified for now
+                  label: l10n.translate('confirmPasswordLabel'),
                   icon: AppIcons.password,
                   obscureText: true,
+                  autocorrect: false,
+                  enableSuggestions: false,
+                  textCapitalization: TextCapitalization.none,
+                  validator: (value) {
+                    final requiredMessage = _requiredValidator(value, l10n);
+                    if (requiredMessage != null) {
+                      return requiredMessage;
+                    }
+                    if (value != _passwordController.text) {
+                      return l10n.translate('passwordsDoNotMatch');
+                    }
+                    return null;
+                  },
                 ),
                 const SizedBox(height: 24),
                 CustomButton(
                   text: l10n.translate('signupButton'),
                   isLoading: authProvider.isLoading,
                   onPressed: () async {
-                    if (_passwordController.text !=
-                        _confirmPasswordController.text) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Passwords do not match')),
-                      );
+                    if (!_formKey.currentState!.validate()) {
                       return;
                     }
                     final success = await authProvider.register(
-                      _emailController.text,
+                      _usernameController.text.trim(),
+                      _emailController.text.trim(),
                       _passwordController.text,
+                      _nameController.text.trim(),
                     );
                     if (success && context.mounted) {
                       Navigator.pushAndRemoveUntil(

@@ -1,39 +1,58 @@
 import 'package:flutter/material.dart';
+import '../../../../core/localization/app_localizations.dart';
+import '../../../../core/theme/app_colors.dart';
 
 class InsightsPage extends StatelessWidget {
   const InsightsPage({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            "Resultados IA",
-            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+          Text(
+            l10n.translate('aiResults'),
+            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+              fontWeight: FontWeight.bold,
+              fontSize: 28,
+              letterSpacing: -0.8,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Respuestas y estructura accionable a partir de tus audios',
+            style: TextStyle(
+              color: isDarkMode
+                  ? AppColors.textSecondaryDark
+                  : AppColors.textSecondaryLight,
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+            ),
           ),
           const SizedBox(height: 20),
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
               gradient: const LinearGradient(
-                colors: [Color(0xFF7C3AED), Color(0xFF4F46E5)],
+                colors: [Color(0xFF6D28D9), Color(0xFF4F46E5)],
               ),
               borderRadius: BorderRadius.circular(24),
             ),
-            child: const Column(
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  "Último Resumen",
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                  l10n.translate('lastSummary'),
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
                 ),
-                SizedBox(height: 10),
+                const SizedBox(height: 10),
                 Text(
-                  "La discusión se centró en la optimización de procesos mediante IA. Los puntos clave incluyen la reducción de latencia en la nube.",
-                  style: TextStyle(color: Colors.white70, height: 1.5),
+                  l10n.translate('insightSummaryBody'),
+                  style: const TextStyle(color: Colors.white70, height: 1.5),
                 ),
               ],
             ),
@@ -45,24 +64,29 @@ class InsightsPage extends StatelessWidget {
                 child: _infoCard(
                   context,
                   Icons.biotech,
-                  "Mind Map",
-                  "14 Nodos",
+                  l10n.translate('mindMap'),
+                  l10n.translate('nodesCount'),
                 ),
               ),
               const SizedBox(width: 15),
               Expanded(
-                child: _infoCard(context, Icons.share, "Compartir", "PDF, MD"),
+                child: _infoCard(
+                  context,
+                  Icons.share,
+                  l10n.translate('share'),
+                  l10n.translate('shareFormats'),
+                ),
               ),
             ],
           ),
           const SizedBox(height: 20),
-          const Text(
-            "Próximos pasos",
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+          Text(
+            l10n.translate('nextSteps'),
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
           ),
           const SizedBox(height: 12),
-          _stepItem("Definir arquitectura de servicios."),
-          _stepItem("Revisar costos de AWS Transcribe."),
+          _stepItem(l10n.translate('nextStepOne')),
+          _stepItem(l10n.translate('nextStepTwo')),
         ],
       ),
     );
@@ -74,12 +98,24 @@ class InsightsPage extends StatelessWidget {
     String title,
     String sub,
   ) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
+        color: isDarkMode
+            ? AppColors.darkSurface.withOpacity(0.92)
+            : Colors.white.withOpacity(0.96),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Theme.of(context).dividerColor),
+        border: Border.all(
+          color: isDarkMode ? AppColors.darkBorder : AppColors.lightBorder,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(isDarkMode ? 0.16 : 0.05),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -104,7 +140,7 @@ class InsightsPage extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 8),
       child: Row(
         children: [
-          const Icon(Icons.circle, size: 6, color: Color(0xFF7C3AED)),
+          const Icon(Icons.circle, size: 6, color: Color(0xFF6D28D9)),
           const SizedBox(width: 10),
           Text(
             text,

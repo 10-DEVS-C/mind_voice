@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../../../core/constants/app_assets.dart';
 import '../../../../core/constants/app_icons.dart';
 import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -17,9 +18,16 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
-  final _emailController = TextEditingController();
+  final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
+
+  String? _requiredValidator(String? value, AppLocalizations l10n) {
+    if (value == null || value.trim().isEmpty) {
+      return l10n.translate('requiredField');
+    }
+    return null;
+  }
 
   Future<void> _checkAuthStatus() async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
@@ -45,6 +53,7 @@ class _LoginPageState extends State<LoginPage> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final authProvider = Provider.of<AuthProvider>(context);
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
       body: Center(
@@ -56,12 +65,28 @@ class _LoginPageState extends State<LoginPage> {
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Icon(
-                  AppIcons.login,
-                  size: 80,
-                  color: Theme.of(context).primaryColor,
+                Image.asset(
+                  isDarkMode ? AppAssets.logo1 : AppAssets.logo2,
+                  height: 140,
+                  width: 240,
+                  fit: BoxFit.contain,
+                  errorBuilder: (_, __, ___) => Icon(
+                    AppIcons.login,
+                    size: 80,
+                    color: Theme.of(context).primaryColor,
+                  ),
                 ),
-                const SizedBox(height: 32),
+                const SizedBox(height: 8),
+                Text(
+                  'MindVoice',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1.5,
+                    color: isDarkMode ? Colors.white : Colors.black87,
+                  ),
+                ),
+                const SizedBox(height: 28),
                 Text(
                   l10n.translate('loginTitle'),
                   textAlign: TextAlign.center,
@@ -69,10 +94,14 @@ class _LoginPageState extends State<LoginPage> {
                 ),
                 const SizedBox(height: 32),
                 CustomTextField(
-                  controller: _emailController,
-                  label: l10n.translate('emailLabel'),
-                  icon: AppIcons.email,
-                  keyboardType: TextInputType.emailAddress,
+                  controller: _usernameController,
+                  label: l10n.translate('usernameLabel'),
+                  icon: AppIcons.username,
+                  keyboardType: TextInputType.text,
+                  autocorrect: false,
+                  enableSuggestions: false,
+                  textCapitalization: TextCapitalization.none,
+                  validator: (value) => _requiredValidator(value, l10n),
                 ),
                 const SizedBox(height: 16),
                 CustomTextField(
@@ -80,6 +109,10 @@ class _LoginPageState extends State<LoginPage> {
                   label: l10n.translate('passwordLabel'),
                   icon: AppIcons.password,
                   obscureText: true,
+                  autocorrect: false,
+                  enableSuggestions: false,
+                  textCapitalization: TextCapitalization.none,
+                  validator: (value) => _requiredValidator(value, l10n),
                 ),
                 const SizedBox(height: 24),
                 if (authProvider.error != null)
@@ -95,8 +128,11 @@ class _LoginPageState extends State<LoginPage> {
                   text: l10n.translate('loginButton'),
                   isLoading: authProvider.isLoading,
                   onPressed: () async {
+                    if (!_formKey.currentState!.validate()) {
+                      return;
+                    }
                     final success = await authProvider.login(
-                      _emailController.text,
+                      _usernameController.text.trim(),
                       _passwordController.text,
                     );
                     if (success && context.mounted) {

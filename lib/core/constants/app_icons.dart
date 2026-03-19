@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 class AppIcons {
+  static const IconData username = Icons.person_outline;
   static const IconData email = Icons.email_outlined;
   static const IconData password = Icons.lock_outlined;
   static const IconData visibility = Icons.visibility_outlined;

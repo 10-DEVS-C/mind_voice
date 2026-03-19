@@ -97,7 +97,7 @@ class _RecordingPlayerWidgetState extends State<RecordingPlayerWidget> {
                       ? Icons.pause_circle_filled
                       : Icons.play_circle_filled,
                   size: 40,
-                  color: const Color(0xFF7C3AED),
+                  color: const Color(0xFF6D28D9),
                 ),
                 onPressed: () async {
                   if (_isPlaying) {
@@ -126,7 +126,7 @@ class _RecordingPlayerWidgetState extends State<RecordingPlayerWidget> {
                         final position = Duration(milliseconds: value.toInt());
                         await _audioPlayer.seek(position);
                       },
-                      activeColor: const Color(0xFF7C3AED),
+                      activeColor: const Color(0xFF6D28D9),
                       inactiveColor: Colors.grey.withOpacity(0.3),
                     ),
                     Padding(

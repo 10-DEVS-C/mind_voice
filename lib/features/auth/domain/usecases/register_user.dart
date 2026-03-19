@@ -6,7 +6,7 @@ class RegisterUser {
 
   RegisterUser(this.repository);
 
-  Future<User> call(String email, String password) async {
-    return await repository.register(email, password);
+  Future<User> call(String username, String email, String password, String name) async {
+    return await repository.register(username, email, password, name);
   }
 }

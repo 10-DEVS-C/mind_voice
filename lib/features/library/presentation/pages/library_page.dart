@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
+import '../../../../core/localization/app_localizations.dart';
+import '../../../../core/theme/app_colors.dart';
 import '../../../../features/audio_recorder/presentation/providers/audio_recorder_provider.dart';
 import '../../../../features/audio_recorder/domain/entities/recording.dart';
 import '../../../../features/audio_recorder/presentation/widgets/recording_player_widget.dart';
@@ -27,6 +29,7 @@ class _LibraryPageState extends State<LibraryPage> {
   }
 
   void _showTranscriptionModal(BuildContext context, Recording recording) {
+    final l10n = AppLocalizations.of(context)!;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -45,7 +48,7 @@ class _LibraryPageState extends State<LibraryPage> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  "Transcripción",
+                  l10n.translate('transcription'),
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
@@ -104,7 +107,7 @@ class _LibraryPageState extends State<LibraryPage> {
                 widget.onNavigateToInsights();
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF7C3AED),
+                backgroundColor: const Color(0xFF6D28D9),
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
@@ -127,14 +130,31 @@ class _LibraryPageState extends State<LibraryPage> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     return Padding(
       padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            "Tus Audios",
-            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+          Text(
+            l10n.translate('audios'),
+            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+              fontWeight: FontWeight.bold,
+              fontSize: 28,
+              letterSpacing: -0.8,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Tu biblioteca de ideas y grabaciones',
+            style: TextStyle(
+              color: isDarkMode
+                  ? AppColors.textSecondaryDark
+                  : AppColors.textSecondaryLight,
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+            ),
           ),
           const SizedBox(height: 20),
           Expanded(
@@ -144,10 +164,10 @@ class _LibraryPageState extends State<LibraryPage> {
                   return const Center(child: CircularProgressIndicator());
                 }
                 if (provider.recordings.isEmpty) {
-                  return const Center(
+                  return Center(
                     child: Text(
-                      "No tienes grabaciones aún.",
-                      style: TextStyle(color: Colors.blueGrey),
+                      l10n.translate('libraryEmpty'),
+                      style: const TextStyle(color: Colors.blueGrey),
                     ),
                   );
                 }
@@ -167,23 +187,34 @@ class _LibraryPageState extends State<LibraryPage> {
                         margin: const EdgeInsets.only(bottom: 12),
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: Theme.of(context).cardColor.withOpacity(0.5),
+                          color: isDarkMode
+                              ? AppColors.darkSurface.withOpacity(0.92)
+                              : Colors.white.withOpacity(0.96),
                           borderRadius: BorderRadius.circular(20),
                           border: Border.all(
-                            color: Theme.of(context).dividerColor,
+                            color: isDarkMode
+                                ? AppColors.darkBorder
+                                : AppColors.lightBorder,
                           ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(isDarkMode ? 0.18 : 0.05),
+                              blurRadius: 16,
+                              offset: const Offset(0, 6),
+                            ),
+                          ],
                         ),
                         child: Row(
                           children: [
                             Container(
                               padding: const EdgeInsets.all(10),
                               decoration: BoxDecoration(
-                                color: const Color(0xFF7C3AED).withOpacity(0.2),
+                                color: const Color(0xFF6D28D9).withOpacity(0.2),
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: const Icon(
                                 Icons.play_arrow,
-                                color: Color(0xFF8B5CF6),
+                                color: Color(0xFF6D28D9),
                               ),
                             ),
                             const SizedBox(width: 15),
@@ -227,22 +258,23 @@ class _LibraryPageState extends State<LibraryPage> {
   }
 
   void _showEditTitleDialog(BuildContext context, Recording recording) {
+    final l10n = AppLocalizations.of(context)!;
     final titleController = TextEditingController(text: recording.name);
     final userId = context.read<AuthProvider>().user?.id;
 
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text("Editar Título"),
+        title: Text(l10n.translate('editTitle')),
         content: TextField(
           controller: titleController,
-          decoration: const InputDecoration(hintText: "Nuevo título"),
+          decoration: InputDecoration(hintText: l10n.translate('newTitle')),
           textCapitalization: TextCapitalization.sentences,
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text("Cancelar"),
+            child: Text(l10n.translate('cancel')),
           ),
           ElevatedButton(
             onPressed: () {
@@ -253,15 +285,16 @@ class _LibraryPageState extends State<LibraryPage> {
                   titleController.text,
                   userId,
                 );
-
-                Navigator.pop(context); // Close dialog
                 Navigator.pop(context); // Close modal
               }
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF7C3AED),
+              backgroundColor: const Color(0xFF6D28D9),
             ),
-            child: const Text("Guardar", style: TextStyle(color: Colors.white)),
+            child: Text(
+              l10n.translate('save'),
+              style: const TextStyle(color: Colors.white),
+            ),
           ),
         ],
       ),

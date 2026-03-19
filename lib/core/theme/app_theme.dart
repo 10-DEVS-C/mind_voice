@@ -17,14 +17,17 @@ class AppTheme {
     appBarTheme: const AppBarTheme(
       backgroundColor: AppColors.lightSurface,
       elevation: 0,
-      centerTitle: true,
+      centerTitle: false,
       titleTextStyle: AppTextStyles.headlineMedium,
       iconTheme: IconThemeData(color: AppColors.textPrimaryLight),
     ),
     cardTheme: CardThemeData(
       color: AppColors.lightSurface,
       elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: const BorderSide(color: AppColors.lightBorder),
+      ),
     ),
     textTheme: const TextTheme(
       headlineMedium: AppTextStyles.headlineMedium,
@@ -46,14 +49,17 @@ class AppTheme {
     appBarTheme: const AppBarTheme(
       backgroundColor: AppColors.darkBackground, // Transparent feel
       elevation: 0,
-      centerTitle: true,
+      centerTitle: false,
       titleTextStyle: AppTextStyles.headlineMedium,
       iconTheme: IconThemeData(color: AppColors.textPrimaryDark),
     ),
     cardTheme: CardThemeData(
       color: AppColors.darkSurface,
       elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: const BorderSide(color: AppColors.darkBorder),
+      ),
     ),
     textTheme:
         const TextTheme(

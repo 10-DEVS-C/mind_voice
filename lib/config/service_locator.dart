@@ -9,6 +9,7 @@ import '../features/auth/domain/usecases/login_user.dart';
 import '../features/auth/domain/usecases/register_user.dart';
 import '../features/auth/domain/usecases/logout_user.dart';
 import '../features/auth/domain/usecases/get_current_user.dart';
+import '../features/auth/domain/usecases/update_profile.dart';
 import '../features/auth/presentation/providers/auth_provider.dart';
 import '../features/audio_recorder/data/repositories/audio_recorder_repository_impl.dart';
 import '../features/audio_recorder/domain/repositories/audio_recorder_repository.dart';
@@ -28,6 +29,7 @@ Future<void> init() async {
       registerUser: sl(),
       logoutUser: sl(),
       getCurrentUser: sl(),
+      updateProfileUseCase: sl(),
     ),
   );
   sl.registerLazySingleton(() => SettingsProvider());
@@ -37,6 +39,7 @@ Future<void> init() async {
   sl.registerLazySingleton(() => RegisterUser(sl()));
   sl.registerLazySingleton(() => LogoutUser(sl()));
   sl.registerLazySingleton(() => GetCurrentUser(sl()));
+  sl.registerLazySingleton(() => UpdateProfile(sl()));
 
   // Repository
   sl.registerLazySingleton<AuthRepository>(

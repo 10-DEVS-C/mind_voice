@@ -8,6 +8,10 @@ class CustomTextField extends StatefulWidget {
   final IconData icon;
   final bool obscureText;
   final TextInputType keyboardType;
+  final bool autocorrect;
+  final bool enableSuggestions;
+  final TextCapitalization textCapitalization;
+  final String? Function(String?)? validator;
 
   const CustomTextField({
     super.key,
@@ -16,6 +20,10 @@ class CustomTextField extends StatefulWidget {
     required this.icon,
     this.obscureText = false,
     this.keyboardType = TextInputType.text,
+    this.autocorrect = true,
+    this.enableSuggestions = true,
+    this.textCapitalization = TextCapitalization.sentences,
+    this.validator,
   });
 
   @override
@@ -33,20 +41,35 @@ class _CustomTextFieldState extends State<CustomTextField> {
 
   @override
   Widget build(BuildContext context) {
-    return TextField(
+    final colorScheme = Theme.of(context).colorScheme;
+    final textColor = Theme.of(context).textTheme.bodyMedium?.color ??
+        (Theme.of(context).brightness == Brightness.dark
+            ? Colors.white
+            : Colors.black87);
+    final hintColor = Theme.of(context).textTheme.bodySmall?.color ??
+        (Theme.of(context).brightness == Brightness.dark
+            ? Colors.white70
+            : Colors.black54);
+
+    return TextFormField(
       controller: widget.controller,
       obscureText: _obscureText,
       keyboardType: widget.keyboardType,
-      style: const TextStyle(color: Colors.white),
+      autocorrect: widget.autocorrect,
+      enableSuggestions: widget.enableSuggestions,
+      textCapitalization: widget.textCapitalization,
+      validator: widget.validator,
+      style: TextStyle(color: textColor),
+      cursorColor: colorScheme.primary,
       decoration: InputDecoration(
         labelText: widget.label,
-        labelStyle: const TextStyle(color: Colors.blueGrey),
+        labelStyle: TextStyle(color: hintColor),
         prefixIcon: Icon(widget.icon, color: AppColors.primary),
         suffixIcon: widget.obscureText
             ? IconButton(
                 icon: Icon(
                   _obscureText ? AppIcons.visibility : AppIcons.visibilityOff,
-                  color: Colors.blueGrey,
+                  color: hintColor,
                 ),
                 onPressed: () {
                   setState(() {
@@ -56,18 +79,26 @@ class _CustomTextFieldState extends State<CustomTextField> {
               )
             : null,
         filled: true,
-        fillColor: AppColors.darkSurface,
+        fillColor: colorScheme.surface,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
+          borderSide: BorderSide(color: colorScheme.outline.withOpacity(0.25)),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
+          borderSide: BorderSide(color: colorScheme.outline.withOpacity(0.25)),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.primary, width: 2),
+          borderSide: BorderSide(color: colorScheme.primary, width: 2),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Colors.redAccent, width: 1.5),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Colors.redAccent, width: 2),
         ),
       ),
     );

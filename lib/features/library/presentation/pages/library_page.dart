@@ -141,7 +141,19 @@ class _LibraryPageState extends State<LibraryPage> {
             ),
             const SizedBox(height: 24),
             ElevatedButton(
-              onPressed: () {
+              onPressed: () async {
+                final userId = context.read<AuthProvider>().user?.id;
+                if (userId != null) {
+                  await context.read<AudioRecorderProvider>().analyzeRecordingWithIa(
+                    recording.id,
+                    userId,
+                  );
+                }
+
+                if (!context.mounted) {
+                  return;
+                }
+
                 Navigator.pop(context);
                 widget.onNavigateToInsights();
               },

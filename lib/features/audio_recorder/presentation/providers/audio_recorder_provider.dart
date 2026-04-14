@@ -129,6 +129,7 @@ class AudioRecorderProvider extends ChangeNotifier {
         date: recording.date,
         duration: recording.duration,
         apiAudioId: recording.apiAudioId,
+        apiTranscriptionId: recording.apiTranscriptionId,
         transcription: recording.transcription,
       );
 
@@ -208,6 +209,24 @@ class AudioRecorderProvider extends ChangeNotifier {
       return;
     }
 
+    var apiTranscriptionId = recording.apiTranscriptionId;
+
+    if (recording.apiAudioId != null) {
+      await _updateAudioRemoteTranscription(
+        recording.apiAudioId!,
+        transcription,
+      );
+
+      final createdTranscriptionId = await _createTranscriptionRecord(
+        recording.apiAudioId!,
+        transcription,
+      );
+
+      if (createdTranscriptionId != null && createdTranscriptionId.isNotEmpty) {
+        apiTranscriptionId = createdTranscriptionId;
+      }
+    }
+
     final updatedRecording = Recording(
       id: recording.id,
       path: recording.path,
@@ -215,6 +234,7 @@ class AudioRecorderProvider extends ChangeNotifier {
       date: recording.date,
       duration: recording.duration,
       apiAudioId: recording.apiAudioId,
+      apiTranscriptionId: apiTranscriptionId,
       transcription: transcription,
     );
 
@@ -230,17 +250,6 @@ class AudioRecorderProvider extends ChangeNotifier {
 
     _recordings[index] = updatedRecording;
     notifyListeners();
-
-    if (updatedRecording.apiAudioId != null) {
-      await _updateAudioRemoteTranscription(
-        updatedRecording.apiAudioId!,
-        updatedRecording.transcription!,
-      );
-      await _createTranscriptionRecord(
-        updatedRecording.apiAudioId!,
-        updatedRecording.transcription!,
-      );
-    }
   }
 
   Future<void> _syncRecordingWithApiAndTranscription(
@@ -258,6 +267,7 @@ class AudioRecorderProvider extends ChangeNotifier {
         date: recording.date,
         duration: recording.duration,
         apiAudioId: remoteId,
+        apiTranscriptionId: recording.apiTranscriptionId,
         transcription: recording.transcription,
       );
 
@@ -421,17 +431,17 @@ class AudioRecorderProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> _createTranscriptionRecord(
+  Future<String?> _createTranscriptionRecord(
     String apiAudioId,
     String transcription,
   ) async {
     try {
       final token = _sharedPrefsService.getToken();
       if (token == null || token.isEmpty) {
-        return;
+        return null;
       }
 
-      await _httpClient.post(
+      final response = await _httpClient.post(
         Uri.parse('$_baseUrl/transcriptions/'),
         headers: {
           'Authorization': 'Bearer $token',
@@ -443,8 +453,79 @@ class AudioRecorderProvider extends ChangeNotifier {
           'timestamps': <Map<String, dynamic>>[],
         }),
       );
+
+      if (response.statusCode != 200 && response.statusCode != 201) {
+        debugPrint('Create transcription record failed: ${response.statusCode} - ${response.body}');
+        return null;
+      }
+
+      final Map<String, dynamic> data = jsonDecode(response.body);
+      return data['_id']?.toString();
     } catch (e) {
       debugPrint('Create transcription record error: $e');
+      return null;
+    }
+  }
+
+  Future<Map<String, dynamic>?> analyzeRecordingWithIa(
+    String recordingId,
+    String userId,
+  ) async {
+    final index = _recordings.indexWhere((rec) => rec.id == recordingId);
+    if (index == -1) {
+      _errorMessage = 'No se encontró la grabación a analizar.';
+      notifyListeners();
+      return null;
+    }
+
+    var recording = _recordings[index];
+    if (!_hasRealTranscription(recording.transcription)) {
+      await transcribeRecordingIfNeeded(recordingId, userId);
+      final refreshIndex = _recordings.indexWhere((rec) => rec.id == recordingId);
+      if (refreshIndex == -1) {
+        _errorMessage = 'No se encontró la grabación a analizar.';
+        notifyListeners();
+        return null;
+      }
+      recording = _recordings[refreshIndex];
+    }
+
+    final token = _sharedPrefsService.getToken();
+    if (token == null || token.isEmpty) {
+      _errorMessage = 'Sesión expirada. Inicia sesión de nuevo.';
+      notifyListeners();
+      return null;
+    }
+
+    try {
+      final Map<String, dynamic> payload =
+          recording.apiTranscriptionId != null &&
+              recording.apiTranscriptionId!.isNotEmpty
+          ? {'transcriptionId': recording.apiTranscriptionId}
+          : {'text': recording.transcription ?? ''};
+
+      final response = await _httpClient.post(
+        Uri.parse('$_baseUrl/mindvoice-api/analyze/text'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode(payload),
+      );
+
+      if (response.statusCode != 200) {
+        _errorMessage = 'No se pudo analizar con IA: ${response.statusCode}';
+        notifyListeners();
+        return null;
+      }
+
+      _errorMessage = null;
+      notifyListeners();
+      return jsonDecode(response.body) as Map<String, dynamic>;
+    } catch (e) {
+      _errorMessage = 'Error al analizar con IA: $e';
+      notifyListeners();
+      return null;
     }
   }
 
@@ -484,6 +565,7 @@ class AudioRecorderProvider extends ChangeNotifier {
         date: recording.date,
         duration: recording.duration,
         apiAudioId: recording.apiAudioId,
+        apiTranscriptionId: recording.apiTranscriptionId,
         transcription: null,
       );
 

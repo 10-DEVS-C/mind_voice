@@ -6,6 +6,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../audio_recorder/presentation/providers/audio_recorder_provider.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../auth/presentation/pages/login_page.dart';
+import '../../../tags/presentation/pages/tags_page.dart';
 import '../pages/plans_page.dart';
 
 class SettingsDrawer extends StatefulWidget {
@@ -19,6 +20,12 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
   void _openPlansPage(BuildContext context) {
     Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => const PlansPage()),
+    );
+  }
+
+  void _openTagsPage(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const TagsPage()),
     );
   }
 
@@ -242,6 +249,27 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                 _buildSectionTitle(context, l10n.translate('language')),
                 const SizedBox(height: 8),
                 _buildLanguageSelector(context, l10n, settingsProvider),
+                const SizedBox(height: 24),
+                _buildSectionTitle(context, 'Tags'),
+                const SizedBox(height: 8),
+                Container(
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).cardColor,
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? AppColors.darkBorder
+                          : AppColors.lightBorder,
+                    ),
+                  ),
+                  child: ListTile(
+                    leading: const Icon(Icons.local_offer_outlined),
+                    title: const Text('Gestionar tags'),
+                    subtitle: const Text('Crear y ver tags'),
+                    trailing: const Icon(Icons.chevron_right_rounded),
+                    onTap: () => _openTagsPage(context),
+                  ),
+                ),
                 const SizedBox(height: 24),
                 _buildSectionTitle(context, l10n.translate('profile')),
                 const SizedBox(height: 8),

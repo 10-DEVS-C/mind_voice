@@ -12,9 +12,11 @@ class Recording {
     required this.date,
     required this.duration,
     this.apiAudioId,
+    this.apiTranscriptionId,
     this.transcription,
   });
 
   final String? apiAudioId;
+  final String? apiTranscriptionId;
   final String? transcription;
 }

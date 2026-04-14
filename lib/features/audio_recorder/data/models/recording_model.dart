@@ -7,6 +7,7 @@ class RecordingModel extends Recording {
     required String name,
     required DateTime date,
     required Duration duration,
+    String? apiAudioId,
     String? transcription,
   }) : super(
          id: id,
@@ -14,6 +15,7 @@ class RecordingModel extends Recording {
          name: name,
          date: date,
          duration: duration,
+         apiAudioId: apiAudioId,
          transcription: transcription,
        );
 
@@ -24,6 +26,7 @@ class RecordingModel extends Recording {
       name: json['name'],
       date: DateTime.parse(json['date']),
       duration: Duration(milliseconds: json['durationMs']),
+      apiAudioId: json['apiAudioId'],
       transcription: json['transcription'],
     );
   }
@@ -35,6 +38,7 @@ class RecordingModel extends Recording {
       'name': name,
       'date': date.toIso8601String(),
       'durationMs': duration.inMilliseconds,
+      'apiAudioId': apiAudioId,
       'transcription': transcription,
     };
   }

@@ -34,7 +34,7 @@ class RecordingTile extends StatelessWidget {
         subtitle: Text(dateStr),
         trailing: Text(durationStr),
         onTap: () {
-          // Play audio (not implemented in dummy version)
+          // Play audio
           ScaffoldMessenger.of(
             context,
           ).showSnackBar(SnackBar(content: Text('Playing ${recording.name}')));

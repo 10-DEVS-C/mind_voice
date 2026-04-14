@@ -65,6 +65,8 @@ Future<void> init() async {
       saveRecordingUseCase: sl(),
       deleteRecordingUseCase: sl(),
       updateRecordingUseCase: sl(),
+      sharedPrefsService: sl(),
+      httpClient: sl(),
     ),
   );
 

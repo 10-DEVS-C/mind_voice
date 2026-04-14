@@ -51,17 +51,47 @@ class _RecordingPlayerWidgetState extends State<RecordingPlayerWidget> {
       }
     });
 
+    _audioPlayer.onPlayerComplete.listen((_) {
+      if (mounted) {
+        setState(() {
+          _isPlaying = false;
+          _position = _duration;
+        });
+      }
+    });
+
     // Set source but don't play
     _setSource();
   }
 
   Future<void> _setSource() async {
     try {
+      await _audioPlayer.setReleaseMode(ReleaseMode.stop);
       await _audioPlayer.setSource(DeviceFileSource(widget.audioPath));
       // Optionally update duration if known immediately?
       // No, let listener handle it.
     } catch (e) {
       debugPrint("Error setting audio source: $e");
+    }
+  }
+
+  Future<void> _togglePlayPause() async {
+    try {
+      if (_isPlaying) {
+        await _audioPlayer.pause();
+        return;
+      }
+
+      final hasDuration = _duration > Duration.zero;
+      final isAtEnd = hasDuration && _position >= _duration;
+
+      if (isAtEnd) {
+        await _audioPlayer.seek(Duration.zero);
+      }
+
+      await _audioPlayer.resume();
+    } catch (e) {
+      debugPrint("Error toggling audio playback: $e");
     }
   }
 
@@ -99,13 +129,7 @@ class _RecordingPlayerWidgetState extends State<RecordingPlayerWidget> {
                   size: 40,
                   color: const Color(0xFF6D28D9),
                 ),
-                onPressed: () async {
-                  if (_isPlaying) {
-                    await _audioPlayer.pause();
-                  } else {
-                    await _audioPlayer.resume();
-                  }
-                },
+                onPressed: _togglePlayPause,
               ),
               const SizedBox(width: 8),
               Expanded(
@@ -127,7 +151,7 @@ class _RecordingPlayerWidgetState extends State<RecordingPlayerWidget> {
                         await _audioPlayer.seek(position);
                       },
                       activeColor: const Color(0xFF6D28D9),
-                      inactiveColor: Colors.grey.withOpacity(0.3),
+                      inactiveColor: Colors.grey.withValues(alpha: 0.3),
                     ),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 12),

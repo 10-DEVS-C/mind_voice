@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
@@ -30,6 +32,17 @@ class _LibraryPageState extends State<LibraryPage> {
 
   void _showTranscriptionModal(BuildContext context, Recording recording) {
     final l10n = AppLocalizations.of(context)!;
+    final userId = context.read<AuthProvider>().user?.id;
+
+    if (userId != null && (recording.transcription?.trim().isNotEmpty != true)) {
+      unawaited(
+        context.read<AudioRecorderProvider>().transcribeRecordingIfNeeded(
+          recording.id,
+          userId,
+        ),
+      );
+    }
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -53,9 +66,20 @@ class _LibraryPageState extends State<LibraryPage> {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                IconButton(
-                  icon: const Icon(Icons.close),
-                  onPressed: () => Navigator.pop(context),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.delete_outline),
+                      onPressed: () async {
+                        await _confirmDeleteRecording(context, recording);
+                      },
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -92,12 +116,27 @@ class _LibraryPageState extends State<LibraryPage> {
             ),
             const SizedBox(height: 16),
             Expanded(
-              child: SingleChildScrollView(
-                child: Text(
-                  recording.transcription ??
-                      "Analizando audio... La transcripción aparecerá aquí una vez procesada por la IA.",
-                  style: const TextStyle(fontSize: 15, height: 1.6),
-                ),
+              child: Consumer<AudioRecorderProvider>(
+                builder: (context, provider, child) {
+                  final currentRecording = provider.recordings.firstWhere(
+                    (rec) => rec.id == recording.id,
+                    orElse: () => recording,
+                  );
+
+                  final transcriptionText =
+                      currentRecording.transcription?.trim().isNotEmpty == true
+                      ? currentRecording.transcription!
+                      : provider.isTranscribing(currentRecording.id)
+                      ? "Analizando audio... La transcripción aparecerá aquí una vez procesada por la IA."
+                      : "No se pudo transcribir este audio todavía. Vuelve a abrir este modal para reintentar.";
+
+                  return SingleChildScrollView(
+                    child: Text(
+                      transcriptionText,
+                      style: const TextStyle(fontSize: 15, height: 1.6),
+                    ),
+                  );
+                },
               ),
             ),
             const SizedBox(height: 24),
@@ -124,6 +163,57 @@ class _LibraryPageState extends State<LibraryPage> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Future<void> _confirmDeleteRecording(
+    BuildContext context,
+    Recording recording,
+  ) async {
+    final userId = context.read<AuthProvider>().user?.id;
+    if (userId == null) {
+      return;
+    }
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Eliminar audio'),
+          content: Text('Se eliminará "${recording.name}". Esta acción no se puede deshacer.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('Cancelar'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+              child: const Text('Eliminar', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirm != true || !context.mounted) {
+      return;
+    }
+
+    final deleted = await context.read<AudioRecorderProvider>().deleteRecording(recording.id, userId);
+    if (!context.mounted) {
+      return;
+    }
+
+    if (deleted) {
+      Navigator.pop(context);
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('No se pudo eliminar el audio. Intenta de nuevo.'),
       ),
     );
   }

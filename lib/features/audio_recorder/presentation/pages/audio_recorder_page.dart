@@ -66,7 +66,10 @@ class _AudioRecorderPageState extends State<AudioRecorderPage> {
         builder: (context, provider, child) {
           return RecorderControl(
             isRecording: provider.isRecording,
-            onStart: provider.startRecording,
+            onStart: () {
+              final plan = context.read<AuthProvider>().user?.plan ?? 'basic';
+              provider.startRecording(plan);
+            },
             onStop: () {
               if (userId != null) {
                 provider.stopRecording(userId);

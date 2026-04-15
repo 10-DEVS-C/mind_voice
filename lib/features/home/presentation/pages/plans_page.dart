@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
+import '../../../../shared/widgets/main_background.dart';
 
 class PlansPage extends StatelessWidget {
   const PlansPage({super.key});
@@ -15,109 +16,78 @@ class PlansPage extends StatelessWidget {
     final plan = Provider.of<AuthProvider>(context).user?.plan.toLowerCase();
 
     return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: isDarkMode
-                ? const [Color(0xFF0B0514), Color(0xFF161121), Color(0xFF221932)]
-                : const [Color(0xFFF4F7FB), Color(0xFFEDE9FE), Color(0xFFFFFFFF)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-        ),
+      body: MainBackground(
         child: SafeArea(
-          child: Stack(
-            children: [
-              Positioned(
-                top: -60,
-                left: -20,
-                child: _GlowOrb(
-                  size: 180,
-                  color: AppColors.primary.withOpacity(isDarkMode ? 0.28 : 0.2),
+          child: CustomScrollView(
+            slivers: [
+              SliverAppBar(
+                backgroundColor: Colors.transparent,
+                elevation: 0,
+                pinned: true,
+                title: Text(
+                  l10n.translate('availablePlansTitle'),
+                  style: const TextStyle(fontWeight: FontWeight.w800),
                 ),
               ),
-              Positioned(
-                bottom: -70,
-                right: -30,
-                child: _GlowOrb(
-                  size: 220,
-                  color: const Color(0xFF06B6D4).withOpacity(
-                    isDarkMode ? 0.2 : 0.16,
-                  ),
-                ),
-              ),
-              CustomScrollView(
-                slivers: [
-                  SliverAppBar(
-                    backgroundColor: Colors.transparent,
-                    elevation: 0,
-                    pinned: true,
-                    title: Text(
-                      l10n.translate('availablePlansTitle'),
-                      style: const TextStyle(fontWeight: FontWeight.w800),
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 26),
+                sliver: SliverList.list(
+                  children: [
+                    Text(
+                      l10n.translate('availablePlansSubtitle'),
+                      style: TextStyle(
+                        color: isDarkMode
+                            ? AppColors.textSecondaryDark
+                            : AppColors.textSecondaryLight,
+                      ),
                     ),
-                  ),
-                  SliverPadding(
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 26),
-                    sliver: SliverList.list(
-                      children: [
-                        Text(
-                          l10n.translate('availablePlansSubtitle'),
-                          style: TextStyle(
-                            color: isDarkMode
-                                ? AppColors.textSecondaryDark
-                                : AppColors.textSecondaryLight,
-                          ),
-                        ),
-                        const SizedBox(height: 18),
-                        _PlanCard(
-                          name: l10n.translate('planFreeName'),
-                          description: l10n.translate('planFreeDesc'),
-                          price: '\$0',
-                          ctaText: l10n.translate('planCurrentBtn'),
-                          isCurrent: plan != 'premium',
-                          isFeatured: false,
-                          features: [
-                            l10n.translate('planFeatFree1'),
-                            l10n.translate('planFeatFree2'),
-                            l10n.translate('planFeatFree3'),
-                          ],
-                        ),
-                        const SizedBox(height: 14),
-                        _PlanCard(
-                          name: l10n.translate('planProName'),
-                          description: l10n.translate('planProDesc'),
-                          price: '\$12',
-                          ctaText: plan == 'premium'
-                              ? l10n.translate('planCurrentBtn')
-                              : l10n.translate('planUpgradeBtn'),
-                          isCurrent: plan == 'premium',
-                          isFeatured: true,
-                          features: [
-                            l10n.translate('planFeatPro1'),
-                            l10n.translate('planFeatPro2'),
-                            l10n.translate('planFeatPro3'),
-                            l10n.translate('planFeatPro4'),
-                          ],
-                        ),
-                        const SizedBox(height: 14),
-                        _PlanCard(
-                          name: l10n.translate('planBusinessName'),
-                          description: l10n.translate('planBusinessDesc'),
-                          price: '\$39',
-                          ctaText: l10n.translate('planContactBtn'),
-                          isCurrent: false,
-                          isFeatured: false,
-                          features: [
-                            l10n.translate('planFeatBiz1'),
-                            l10n.translate('planFeatBiz2'),
-                            l10n.translate('planFeatBiz3'),
-                          ],
-                        ),
+                    const SizedBox(height: 18),
+                    _PlanCard(
+                      name: l10n.translate('planFreeName'),
+                      description: l10n.translate('planFreeDesc'),
+                      price: '\$0',
+                      ctaText: l10n.translate('planCurrentBtn'),
+                      isCurrent: plan != 'premium',
+                      isFeatured: false,
+                      features: [
+                        l10n.translate('planFeatFree1'),
+                        l10n.translate('planFeatFree2'),
+                        l10n.translate('planFeatFree3'),
                       ],
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 14),
+                    _PlanCard(
+                      name: l10n.translate('planProName'),
+                      description: l10n.translate('planProDesc'),
+                      price: '\$12',
+                      ctaText: plan == 'premium'
+                          ? l10n.translate('planCurrentBtn')
+                          : l10n.translate('planUpgradeBtn'),
+                      isCurrent: plan == 'premium',
+                      isFeatured: true,
+                      features: [
+                        l10n.translate('planFeatPro1'),
+                        l10n.translate('planFeatPro2'),
+                        l10n.translate('planFeatPro3'),
+                        l10n.translate('planFeatPro4'),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    _PlanCard(
+                      name: l10n.translate('planBusinessName'),
+                      description: l10n.translate('planBusinessDesc'),
+                      price: '\$39',
+                      ctaText: l10n.translate('planContactBtn'),
+                      isCurrent: false,
+                      isFeatured: false,
+                      features: [
+                        l10n.translate('planFeatBiz1'),
+                        l10n.translate('planFeatBiz2'),
+                        l10n.translate('planFeatBiz3'),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
@@ -272,34 +242,6 @@ class _PlanCard extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _GlowOrb extends StatelessWidget {
-  final double size;
-  final Color color;
-
-  const _GlowOrb({required this.size, required this.color});
-
-  @override
-  Widget build(BuildContext context) {
-    return IgnorePointer(
-      child: Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-          color: color,
-          shape: BoxShape.circle,
-          boxShadow: [
-            BoxShadow(
-              color: color,
-              blurRadius: 80,
-              spreadRadius: 14,
-            ),
-          ],
-        ),
       ),
     );
   }

@@ -12,6 +12,7 @@ import '../../../../core/localization/app_localizations.dart';
 import '../../../../features/audio_recorder/presentation/providers/audio_recorder_provider.dart';
 import '../../../../features/auth/presentation/providers/auth_provider.dart';
 import '../../../../features/auth/presentation/pages/login_page.dart';
+import '../../../../shared/widgets/main_background.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -166,18 +167,9 @@ class _HomePageState extends State<HomePage> {
           const SizedBox(width: 8),
         ],
       ),
-      body: SafeArea(
-        bottom: false,
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: isDarkMode
-                  ? const [Color(0xFF0B0514), Color(0xFF140C20)]
-                  : const [Color(0xFFF4F7FB), Colors.white],
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-            ),
-          ),
+      body: MainBackground(
+        child: SafeArea(
+          bottom: false,
           child: IndexedStack(
             index: _currentIndex,
             children: [
@@ -185,13 +177,20 @@ class _HomePageState extends State<HomePage> {
               RecordPage(
                 isRecording: isRecording,
                 timerText: _formatTime(_seconds),
+                plan: authUser?.plan ?? 'basic',
+                usedRecordings: audioProvider.getTodayRecordingsCount(),
+                totalLimit: audioProvider.getTotalLimit(authUser?.plan ?? 'basic'),
                 onToggle: () {
                   if (isRecording) {
                     if (userId != null) {
-                      context.read<AudioRecorderProvider>().stopRecording(userId);
+                      context
+                          .read<AudioRecorderProvider>()
+                          .stopRecording(userId);
                     }
                   } else {
-                    context.read<AudioRecorderProvider>().startRecording();
+                    context
+                        .read<AudioRecorderProvider>()
+                        .startRecording(authUser?.plan ?? 'basic');
                   }
                 },
               ),
@@ -203,7 +202,7 @@ class _HomePageState extends State<HomePage> {
       bottomNavigationBar: SafeArea(
         top: false,
         minimum: const EdgeInsets.fromLTRB(12, 0, 12, 10),
-        child: _buildBottomNav(isRecording, userId, l10n),
+        child: _buildBottomNav(isRecording, userId, authUser?.plan ?? 'basic', l10n),
       ),
     );
   }
@@ -211,6 +210,7 @@ class _HomePageState extends State<HomePage> {
   Widget _buildBottomNav(
     bool isRecording,
     String? userId,
+    String plan,
     AppLocalizations l10n,
   ) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
@@ -230,7 +230,7 @@ class _HomePageState extends State<HomePage> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           _navItem(0, Icons.book_outlined, l10n.translate('homeTabLibrary')),
-          _recordButton(isRecording, userId),
+          _recordButton(isRecording, userId, plan),
           _navItem(2, Icons.bar_chart_outlined, l10n.translate('homeTabInsights')),
         ],
       ),
@@ -295,7 +295,7 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _recordButton(bool isRecording, String? userId) {
+  Widget _recordButton(bool isRecording, String? userId, String plan) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final navBackground = isDarkMode
         ? AppColors.darkBackground
@@ -312,7 +312,7 @@ class _HomePageState extends State<HomePage> {
             context.read<AudioRecorderProvider>().stopRecording(userId);
           }
         } else {
-          context.read<AudioRecorderProvider>().startRecording();
+          context.read<AudioRecorderProvider>().startRecording(plan);
         }
       },
       child: Container(

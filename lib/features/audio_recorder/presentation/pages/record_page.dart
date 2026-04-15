@@ -6,43 +6,106 @@ class RecordPage extends StatelessWidget {
   final bool isRecording;
   final String timerText;
   final VoidCallback onToggle;
+  final String plan;
+  final int usedRecordings;
+  final int totalLimit;
 
   const RecordPage({
     super.key,
     required this.isRecording,
     required this.timerText,
     required this.onToggle,
+    required this.plan,
+    required this.usedRecordings,
+    required this.totalLimit,
   });
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final isUnlimited = totalLimit > 1000;
+    final progress = isUnlimited ? 1.0 : (usedRecordings / totalLimit).clamp(0.0, 1.0);
+
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 20),
+      padding: const EdgeInsets.fromLTRB(20, 10, 20, 40),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
+          // Plan Usage Indicator - NOW AT THE VERY TOP
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: isDarkMode
+                  ? Colors.white.withOpacity(0.05)
+                  : Colors.black.withOpacity(0.03),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Column(
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Plan ${plan.substring(0, 1).toUpperCase()}${plan.substring(1)}',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                        color: isDarkMode ? Colors.white70 : Colors.black87,
+                      ),
+                    ),
+                    Text(
+                      isUnlimited ? "\u221E" : '$usedRecordings / $totalLimit',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w900,
+                        fontSize: 12,
+                        color: isDarkMode ? Colors.white : AppColors.primary,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: LinearProgressIndicator(
+                    value: progress,
+                    minHeight: 4,
+                    backgroundColor: isDarkMode ? Colors.white10 : Colors.black12,
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      progress > 0.9 ? Colors.redAccent : const Color(0xFF6D28D9),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 30),
+          // Titles
           Column(
             children: [
               Text(
                 l10n.translate('captureIdeas'),
+                textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: -0.8,
-                ),
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: -0.8,
+                    ),
               ),
               const SizedBox(height: 8),
               Text(
                 l10n.translate('aiWillHandle'),
+                textAlign: TextAlign.center,
                 style: TextStyle(
-                  color: Theme.of(context).textTheme.bodySmall?.color ?? Colors.blueGrey,
+                  color: Theme.of(context).textTheme.bodySmall?.color ??
+                      Colors.blueGrey,
                   fontSize: 16,
                 ),
               ),
             ],
           ),
+          const Spacer(flex: 3), // This pushes the mic up
+          // Mic Button
           Stack(
             alignment: Alignment.center,
             children: [
@@ -97,14 +160,17 @@ class RecordPage extends StatelessWidget {
               ),
             ],
           ),
+          const Spacer(flex: 2), // Space between mic and timer
+          // Timer
           Column(
             children: [
               Text(
                 timerText,
                 style: const TextStyle(
-                  fontSize: 48,
+                  fontSize: 52,
                   fontWeight: FontWeight.w200,
                   fontFamily: 'monospace',
+                  letterSpacing: 2,
                 ),
               ),
               const SizedBox(height: 10),
@@ -115,10 +181,12 @@ class RecordPage extends StatelessWidget {
                 style: TextStyle(
                   color: isRecording ? Colors.redAccent : Colors.blueGrey,
                   fontWeight: FontWeight.bold,
+                  letterSpacing: 0.5,
                 ),
               ),
             ],
           ),
+          const Spacer(flex: 5), // Deep push from bottom to raise everything
         ],
       ),
     );

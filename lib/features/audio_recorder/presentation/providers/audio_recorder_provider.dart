@@ -376,10 +376,16 @@ class AudioRecorderProvider extends ChangeNotifier {
     final p = plan.toLowerCase();
     if (p == 'business' || p == 'admin') return true;
 
-    final limit = p == 'professional' ? 20 : 3;
+    final limit = p == 'professional' ? 25 : 5;
     final count = getTodayRecordingsCount();
 
     return count < limit;
+  }
+
+  int getTotalLimit(String plan) {
+    final p = plan.toLowerCase();
+    if (p == 'business' || p == 'admin') return 9999;
+    return p == 'professional' ? 25 : 5;
   }
 
   Future<void> startRecording(String plan) async {
@@ -387,8 +393,9 @@ class AudioRecorderProvider extends ChangeNotifier {
     
     if (!canStartRecording(plan)) {
       final p = plan.toLowerCase();
-      final limit = p == 'professional' ? 20 : 3;
-      _errorMessage = "Límite alcanzado: Tu plan ${plan.capitalize()} permite $limit notas por día.";
+      final limit = p == 'professional' ? 25 : 5;
+      final capitalizedPlan = p.isNotEmpty ? p[0].toUpperCase() + p.substring(1) : p;
+      _errorMessage = "Límite alcanzado: Tu plan $capitalizedPlan permite $limit notas por día.";
       notifyListeners();
       return;
     }

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../core/localization/app_localizations.dart';
@@ -6,14 +6,44 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../../shared/widgets/main_background.dart';
 
-class PlansPage extends StatelessWidget {
+class PlansPage extends StatefulWidget {
   const PlansPage({super.key});
+
+  @override
+  State<PlansPage> createState() => _PlansPageState();
+}
+
+class _PlansPageState extends State<PlansPage> {
+  String? _changingPlanKey;
+
+  Future<void> _handleChangePlan(String planKey) async {
+    setState(() => _changingPlanKey = planKey);
+    final authProvider = context.read<AuthProvider>();
+    final success = await authProvider.changePlan(planKey);
+
+    if (!mounted) return;
+    setState(() => _changingPlanKey = null);
+
+    if (success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Plan actualizado correctamente')),
+      );
+    } else if (authProvider.error != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(authProvider.error!)),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    final plan = Provider.of<AuthProvider>(context).user?.plan.toLowerCase();
+    final plan = context.watch<AuthProvider>().user?.plan.toLowerCase() ?? 'basic';
+
+    final isBasic = plan == 'basic';
+    final isProfessional = plan == 'professional' || plan == 'premium' || plan == 'pro';
+    final isBusiness = plan == 'business';
 
     return Scaffold(
       body: MainBackground(
@@ -45,26 +75,33 @@ class PlansPage extends StatelessWidget {
                     _PlanCard(
                       name: l10n.translate('planFreeName'),
                       description: l10n.translate('planFreeDesc'),
-                      price: '\$0',
-                      ctaText: l10n.translate('planCurrentBtn'),
-                      isCurrent: plan != 'premium',
+                      price: r'$0',
+                      ctaText: isBasic
+                          ? l10n.translate('planCurrentBtn')
+                          : l10n.translate('planUpgradeBtn'),
+                      isCurrent: isBasic,
                       isFeatured: false,
+                      isLoading: _changingPlanKey == 'basic',
+                      onTap: isBasic ? null : () => _handleChangePlan('basic'),
                       features: [
                         l10n.translate('planFeatFree1'),
                         l10n.translate('planFeatFree2'),
                         l10n.translate('planFeatFree3'),
+                        l10n.translate('planFeatFree4'),
                       ],
                     ),
                     const SizedBox(height: 14),
                     _PlanCard(
                       name: l10n.translate('planProName'),
                       description: l10n.translate('planProDesc'),
-                      price: '\$12',
-                      ctaText: plan == 'premium'
+                      price: r'$12',
+                      ctaText: isProfessional
                           ? l10n.translate('planCurrentBtn')
                           : l10n.translate('planUpgradeBtn'),
-                      isCurrent: plan == 'premium',
+                      isCurrent: isProfessional,
                       isFeatured: true,
+                      isLoading: _changingPlanKey == 'professional',
+                      onTap: isProfessional ? null : () => _handleChangePlan('professional'),
                       features: [
                         l10n.translate('planFeatPro1'),
                         l10n.translate('planFeatPro2'),
@@ -76,14 +113,19 @@ class PlansPage extends StatelessWidget {
                     _PlanCard(
                       name: l10n.translate('planBusinessName'),
                       description: l10n.translate('planBusinessDesc'),
-                      price: '\$39',
-                      ctaText: l10n.translate('planContactBtn'),
-                      isCurrent: false,
+                      price: r'$39',
+                      ctaText: isBusiness
+                          ? l10n.translate('planCurrentBtn')
+                          : l10n.translate('planContactBtn'),
+                      isCurrent: isBusiness,
                       isFeatured: false,
+                      isLoading: _changingPlanKey == 'business',
+                      onTap: isBusiness ? null : () => _handleChangePlan('business'),
                       features: [
                         l10n.translate('planFeatBiz1'),
                         l10n.translate('planFeatBiz2'),
                         l10n.translate('planFeatBiz3'),
+                        l10n.translate('planFeatBiz4'),
                       ],
                     ),
                   ],
@@ -104,7 +146,9 @@ class _PlanCard extends StatelessWidget {
   final String ctaText;
   final bool isCurrent;
   final bool isFeatured;
+  final bool isLoading;
   final List<String> features;
+  final VoidCallback? onTap;
 
   const _PlanCard({
     required this.name,
@@ -113,7 +157,9 @@ class _PlanCard extends StatelessWidget {
     required this.ctaText,
     required this.isCurrent,
     required this.isFeatured,
+    required this.isLoading,
     required this.features,
+    this.onTap,
   });
 
   @override
@@ -231,14 +277,17 @@ class _PlanCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(14),
                 ),
               ),
-              onPressed: isCurrent
-                  ? null
-                  : () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text(l10n.translate('planSoonMessage'))),
-                      );
-                    },
-              child: Text(ctaText),
+              onPressed: (isCurrent || isLoading) ? null : onTap,
+              child: isLoading
+                  ? const SizedBox(
+                      height: 18,
+                      width: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : Text(ctaText),
             ),
           ),
         ],

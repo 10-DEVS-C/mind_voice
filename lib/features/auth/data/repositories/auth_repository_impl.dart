@@ -96,6 +96,40 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
+  Future<String> changePlan(String planKey) async {
+    final token = sharedPrefsService.getToken();
+    final userData = sharedPrefsService.getUserData();
+    final userId = userData['id'];
+
+    if (token == null || token.isEmpty || userId == null || userId.isEmpty) {
+      throw Exception('Sesión inválida');
+    }
+
+    try {
+      final newPlan = await remoteDataSource.changePlanRole(
+        token: token,
+        userId: userId,
+        planKey: planKey,
+      );
+
+      // Persistir el nuevo plan localmente
+      await sharedPrefsService.saveUserData(
+        id: userData['id'] ?? '',
+        email: userData['email'] ?? '',
+        username: userData['username'] ?? '',
+        name: userData['name'] ?? '',
+        plan: newPlan,
+      );
+
+      return newPlan;
+    } on ServerException catch (e) {
+      throw Exception(e.message);
+    } catch (e) {
+      throw Exception('Error inesperado: $e');
+    }
+  }
+
+  @override
   Future<void> logout() async {
     await sharedPrefsService.removeToken();
     await sharedPrefsService.clearUserData();

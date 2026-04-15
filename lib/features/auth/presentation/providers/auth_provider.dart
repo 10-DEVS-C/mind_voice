@@ -4,6 +4,7 @@ import '../../domain/usecases/register_user.dart';
 import '../../domain/usecases/logout_user.dart';
 import '../../domain/usecases/get_current_user.dart';
 import '../../domain/usecases/update_profile.dart';
+import '../../domain/usecases/change_plan.dart';
 import '../../domain/entities/user.dart';
 
 class AuthProvider extends ChangeNotifier {
@@ -12,6 +13,7 @@ class AuthProvider extends ChangeNotifier {
   final LogoutUser logoutUser;
   final GetCurrentUser getCurrentUser;
   final UpdateProfile updateProfileUseCase;
+  final ChangePlan changePlanUseCase;
 
   AuthProvider({
     required this.loginUser,
@@ -19,6 +21,7 @@ class AuthProvider extends ChangeNotifier {
     required this.logoutUser,
     required this.getCurrentUser,
     required this.updateProfileUseCase,
+    required this.changePlanUseCase,
   });
 
   User? _user;
@@ -90,6 +93,33 @@ class AuthProvider extends ChangeNotifier {
         email: email,
         name: name,
       );
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _error = _normalizeError(e);
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> changePlan(String planKey) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      final newPlan = await changePlanUseCase(planKey);
+      if (_user != null) {
+        _user = User(
+          id: _user!.id,
+          email: _user!.email,
+          username: _user!.username,
+          name: _user!.name,
+          plan: newPlan,
+        );
+      }
       _isLoading = false;
       notifyListeners();
       return true;

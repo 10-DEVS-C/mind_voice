@@ -15,6 +15,11 @@ abstract class AuthRemoteDataSource {
     required String name,
     required String plan,
   });
+  Future<String> changePlanRole({
+    required String token,
+    required String userId,
+    required String planKey,
+  });
 }
 
 class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
@@ -173,5 +178,66 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     throw ServerException(
       _extractErrorMessage(response, 'No se pudo actualizar el perfil'),
     );
+  }
+
+  @override
+  Future<String> changePlanRole({
+    required String token,
+    required String userId,
+    required String planKey,
+  }) async {
+    // 1. Obtener todos los roles
+    final rolesResponse = await client.get(
+      Uri.parse('$baseUrl/roles/'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+
+    if (rolesResponse.statusCode != 200) {
+      throw ServerException('No se pudieron cargar los roles');
+    }
+
+    final List<dynamic> roles = jsonDecode(rolesResponse.body);
+
+    // 2. Buscar rol con name == "User" y permissions.plan == planKey
+    String? roleId;
+    for (final role in roles.whereType<Map<String, dynamic>>()) {
+      final roleName = (role['name'] ?? '').toString().toLowerCase();
+      if (roleName != 'user') continue;
+
+      final permissions = role['permissions'];
+      if (permissions is Map) {
+        final planPerm = (permissions['plan'] ?? '').toString().toLowerCase();
+        final normalized = planKey.toLowerCase();
+        final matches = planPerm == normalized ||
+            (normalized == 'professional' &&
+                (planPerm == 'pro' || planPerm == 'professional'));
+        if (matches) {
+          roleId = role['_id']?.toString();
+          break;
+        }
+      }
+    }
+
+    if (roleId == null || roleId.isEmpty) {
+      throw ServerException('No se encontró el rol para el plan $planKey');
+    }
+
+    // 3. Actualizar el roleId del usuario
+    final updateResponse = await client.put(
+      Uri.parse('$baseUrl/users/$userId'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({'roleId': roleId}),
+    );
+
+    if (updateResponse.statusCode != 200) {
+      throw ServerException(
+        _extractErrorMessage(updateResponse, 'No se pudo actualizar el plan'),
+      );
+    }
+
+    return planKey;
   }
 }

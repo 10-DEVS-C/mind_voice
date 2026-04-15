@@ -65,14 +65,16 @@
     "planProDesc": "For advanced users",
     "planBusinessName": "Business",
     "planBusinessDesc": "For teams and companies",
-    "planFeatFree1": "5 daily recordings",
+    "planFeatFree1": "5 recordings",
     "planFeatFree2": "Basic transcription",
     "planFeatFree3": "Limited AI analysis",
-    "planFeatPro1": "25 daily recordings",
+    "planFeatFree4": "PDF Export",
+    "planFeatPro1": "25 recordings",
     "planFeatPro2": "Full AI and mind maps",
-    "planFeatPro3": "PDF/Word Export",
+    "planFeatPro3": "PDF Export",
     "planFeatPro4": "Priority support",
     "planFeatBiz1": "Unlimited recordings",
     "planFeatBiz2": "Unlimited Advanced AI",
-    "planFeatBiz3": "24/7 Dedicated support"
+    "planFeatBiz3": "24/7 Dedicated support",
+    "planFeatBiz4": "PDF Export"
 }

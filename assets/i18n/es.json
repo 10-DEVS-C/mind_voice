@@ -65,14 +65,16 @@
   "planProDesc": "Para usuarios avanzados",
   "planBusinessName": "Business",
   "planBusinessDesc": "Para equipos y empresas",
-  "planFeatFree1": "5 grabaciones diarias",
+  "planFeatFree1": "5 grabaciones",
   "planFeatFree2": "Transcripción básica",
   "planFeatFree3": "Análisis IA limitado",
-  "planFeatPro1": "25 grabaciones diarias",
+  "planFeatFree4": "Exportación a PDF",
+  "planFeatPro1": "25 grabaciones",
   "planFeatPro2": "IA completa y mapas mentales",
-  "planFeatPro3": "Exportación a PDF/Word",
+  "planFeatPro3": "Exportación a PDF",
   "planFeatPro4": "Soporte prioritario",
   "planFeatBiz1": "Grabaciones ilimitadas",
   "planFeatBiz2": "IA Avanzada sin límites",
-  "planFeatBiz3": "Soporte dedicado 24/7"
+  "planFeatBiz3": "Soporte dedicado 24/7",
+  "planFeatBiz4": "Exportación a PDF"
 }

@@ -144,6 +144,16 @@ class AudioRecorderProvider extends ChangeNotifier {
                 ));
               }
             }
+
+            // Auto-sincronizar grabaciones locales pendientes de subir al servidor
+            final unsyncedLocals = _recordings
+                .where((r) =>
+                    (r.apiAudioId == null || r.apiAudioId!.isEmpty) &&
+                    r.path.isNotEmpty)
+                .toList();
+            for (final r in unsyncedLocals) {
+              unawaited(_syncRecordingWithApiAndTranscription(r, userId));
+            }
           }
         } catch (e) {
           debugPrint("Error fetching remote audios: $e");

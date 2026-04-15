@@ -8,6 +8,7 @@ abstract class AuthRepository {
     required String email,
     required String name,
   });
+  Future<String> changePlan(String planKey);
   Future<void> logout();
   Future<User?> getCurrentUser();
 }

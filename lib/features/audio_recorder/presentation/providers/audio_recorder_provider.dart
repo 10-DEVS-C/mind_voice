@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
 import 'package:record/record.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -48,7 +49,8 @@ class AudioRecorderProvider extends ChangeNotifier {
   bool get forceLogoutRequired => _forceLogoutRequired;
   bool get isRecording => _isRecording;
 
-  bool isTranscribing(String recordingId) => _transcribingIds.contains(recordingId);
+  bool isTranscribing(String recordingId) =>
+      _transcribingIds.contains(recordingId);
 
   bool consumeForceLogoutFlag() {
     final value = _forceLogoutRequired;
@@ -63,7 +65,10 @@ class AudioRecorderProvider extends ChangeNotifier {
       return;
     }
 
-    _errorMessage = RequestErrorMapper.fromHttpStatus(statusCode, fallbackMessage);
+    _errorMessage = RequestErrorMapper.fromHttpStatus(
+      statusCode,
+      fallbackMessage,
+    );
   }
 
   void _markNetworkException(Object error) {
@@ -146,8 +151,11 @@ class AudioRecorderProvider extends ChangeNotifier {
             )
             .where((e) => e['id']!.isNotEmpty && e['name']!.isNotEmpty)
             .toList();
-          } else {
-            _markHttpError(responses[0].statusCode, 'No se pudieron cargar los tags.');
+      } else {
+        _markHttpError(
+          responses[0].statusCode,
+          'No se pudieron cargar los tags.',
+        );
       }
 
       if (responses[1].statusCode == 200) {
@@ -315,9 +323,12 @@ class AudioRecorderProvider extends ChangeNotifier {
 
       final directory = await getApplicationDocumentsDirectory();
       final String path =
-          '${directory.path}/recording_${DateTime.now().millisecondsSinceEpoch}.m4a';
+          '${directory.path}/recording_${DateTime.now().millisecondsSinceEpoch}.mp4';
 
-      await _audioRecorder.start(const RecordConfig(), path: path);
+      await _audioRecorder.start(
+        const RecordConfig(encoder: AudioEncoder.aacLc),
+        path: path,
+      );
       _isRecording = true;
       _startTime = DateTime.now();
       notifyListeners();
@@ -347,7 +358,9 @@ class AudioRecorderProvider extends ChangeNotifier {
         );
         final savedRecording = await addRecording(newRecording, userId);
         if (savedRecording != null) {
-          unawaited(_syncRecordingWithApiAndTranscription(savedRecording, userId));
+          unawaited(
+            _syncRecordingWithApiAndTranscription(savedRecording, userId),
+          );
         }
       }
       notifyListeners();
@@ -482,20 +495,31 @@ class AudioRecorderProvider extends ChangeNotifier {
         return null;
       }
 
-      final request = http.MultipartRequest(
-        'POST',
-        Uri.parse('$_baseUrl/mindvoice-api/analyze/audio'),
-      )
-        ..headers['Authorization'] = 'Bearer $token'
-        ..files.add(await http.MultipartFile.fromPath('audio', path));
+      final request =
+          http.MultipartRequest(
+              'POST',
+              Uri.parse('$_baseUrl/mindvoice-api/analyze/audio'),
+            )
+            ..headers['Authorization'] = 'Bearer $token'
+            ..files.add(await http.MultipartFile.fromPath(
+              'audio', 
+              path, 
+              contentType: MediaType('audio', 'mp4'),
+              filename: path.split('/').last.split('\\').last,
+            ));
 
       final streamedResponse = await _httpClient.send(request);
       final response = await http.Response.fromStream(streamedResponse);
       if (response.statusCode != 200) {
-        _markHttpError(
-          response.statusCode,
-          'No se pudo transcribir el audio en este momento.',
-        );
+        String errorMsg = 'No se pudo transcribir el audio en este momento.';
+        try {
+          final Map<String, dynamic> errorData = jsonDecode(response.body);
+          if (errorData['message'] != null) {
+            errorMsg = errorData['message'].toString();
+          }
+        } catch (_) {}
+
+        _markHttpError(response.statusCode, errorMsg);
         notifyListeners();
         return null;
       }
@@ -531,16 +555,21 @@ class AudioRecorderProvider extends ChangeNotifier {
         return null;
       }
 
-      final request = http.MultipartRequest(
-        'POST',
-        Uri.parse('$_baseUrl/audios/upload'),
-      )
-        ..headers['Authorization'] = 'Bearer $token'
-        ..fields['duration'] = recording.duration.inSeconds.toString()
-        ..fields['title'] = recording.name
-        ..fields['folderId'] = recording.folderId ?? ''
-        ..fields['tagIds'] = recording.tagIds.join(',')
-        ..files.add(await http.MultipartFile.fromPath('file', recording.path));
+      final request =
+          http.MultipartRequest('POST', Uri.parse('$_baseUrl/audios/upload'))
+            ..headers['Authorization'] = 'Bearer $token'
+            ..fields['duration'] = recording.duration.inSeconds.toString()
+            ..fields['title'] = recording.name
+            ..fields['folderId'] = recording.folderId ?? ''
+            ..fields['tagIds'] = recording.tagIds.join(',')
+            ..files.add(
+              await http.MultipartFile.fromPath(
+                'file', 
+                recording.path, 
+                contentType: MediaType('audio', 'mp4'),
+                filename: recording.path.split('/').last.split('\\').last,
+              ),
+            );
 
       final streamedResponse = await _httpClient.send(request);
       final response = await http.Response.fromStream(streamedResponse);
@@ -640,10 +669,7 @@ class AudioRecorderProvider extends ChangeNotifier {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
         },
-        body: jsonEncode({
-          'folderId': folderId,
-          'tagIds': tagIds,
-        }),
+        body: jsonEncode({'folderId': folderId, 'tagIds': tagIds}),
       );
 
       final ok = response.statusCode == 200;
@@ -718,7 +744,9 @@ class AudioRecorderProvider extends ChangeNotifier {
     var recording = _recordings[index];
     if (!_hasRealTranscription(recording.transcription)) {
       await transcribeRecordingIfNeeded(recordingId, userId);
-      final refreshIndex = _recordings.indexWhere((rec) => rec.id == recordingId);
+      final refreshIndex = _recordings.indexWhere(
+        (rec) => rec.id == recordingId,
+      );
       if (refreshIndex == -1) {
         _errorMessage = 'No se encontró la grabación a analizar.';
         notifyListeners();

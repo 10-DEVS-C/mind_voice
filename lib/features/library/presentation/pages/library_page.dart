@@ -36,7 +36,8 @@ class _LibraryPageState extends State<LibraryPage> {
     final l10n = AppLocalizations.of(context)!;
     final userId = context.read<AuthProvider>().user?.id;
 
-    if (userId != null && (recording.transcription?.trim().isNotEmpty != true)) {
+    if (userId != null &&
+        (recording.transcription?.trim().isNotEmpty != true)) {
       unawaited(
         context.read<AudioRecorderProvider>().transcribeRecordingIfNeeded(
           recording.id,
@@ -46,7 +47,8 @@ class _LibraryPageState extends State<LibraryPage> {
     }
 
     final audioProvider = context.read<AudioRecorderProvider>();
-    if (audioProvider.availableFolders.isEmpty || audioProvider.availableTags.isEmpty) {
+    if (audioProvider.availableFolders.isEmpty ||
+        audioProvider.availableTags.isEmpty) {
       unawaited(audioProvider.loadTaxonomyOptions());
     }
 
@@ -63,7 +65,9 @@ class _LibraryPageState extends State<LibraryPage> {
           return Container(
             decoration: BoxDecoration(
               color: Theme.of(context).scaffoldBackgroundColor,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(24),
+              ),
             ),
             child: SafeArea(
               top: false,
@@ -90,9 +94,8 @@ class _LibraryPageState extends State<LibraryPage> {
                       children: [
                         Text(
                           l10n.translate('transcription'),
-                          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
+                          style: Theme.of(context).textTheme.headlineSmall
+                              ?.copyWith(fontWeight: FontWeight.bold),
                         ),
                         Row(
                           mainAxisSize: MainAxisSize.min,
@@ -100,7 +103,10 @@ class _LibraryPageState extends State<LibraryPage> {
                             IconButton(
                               icon: const Icon(Icons.delete_outline),
                               onPressed: () async {
-                                await _confirmDeleteRecording(context, recording);
+                                await _confirmDeleteRecording(
+                                  context,
+                                  recording,
+                                );
                               },
                             ),
                             IconButton(
@@ -135,7 +141,10 @@ class _LibraryPageState extends State<LibraryPage> {
                     const SizedBox(height: 8),
                     Text(
                       DateFormat('dd MMM yyyy - HH:mm').format(recording.date),
-                      style: const TextStyle(color: Colors.blueGrey, fontSize: 12),
+                      style: const TextStyle(
+                        color: Colors.blueGrey,
+                        fontSize: 12,
+                      ),
                     ),
                     const SizedBox(height: 24),
                     RecordingPlayerWidget(
@@ -151,14 +160,15 @@ class _LibraryPageState extends State<LibraryPage> {
                         );
                         final isLoadingTaxonomy = provider.isLoadingTaxonomy;
 
-                        final folderName = provider.availableFolders
-                            .firstWhere(
-                              (f) => f['id'] == currentRecording.folderId,
-                              orElse: () => const {'name': 'Sin carpeta'},
-                            )['name'];
+                        final folderName = provider.availableFolders.firstWhere(
+                          (f) => f['id'] == currentRecording.folderId,
+                          orElse: () => const {'name': 'Sin carpeta'},
+                        )['name'];
 
                         final selectedTags = provider.availableTags
-                            .where((t) => currentRecording.tagIds.contains(t['id']))
+                            .where(
+                              (t) => currentRecording.tagIds.contains(t['id']),
+                            )
                             .map((e) => e['name']!)
                             .toList();
 
@@ -167,7 +177,9 @@ class _LibraryPageState extends State<LibraryPage> {
                           decoration: BoxDecoration(
                             color: Theme.of(context).cardColor,
                             borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: Theme.of(context).dividerColor),
+                            border: Border.all(
+                              color: Theme.of(context).dividerColor,
+                            ),
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -178,7 +190,9 @@ class _LibraryPageState extends State<LibraryPage> {
                                     SizedBox(
                                       width: 14,
                                       height: 14,
-                                      child: CircularProgressIndicator(strokeWidth: 2),
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                      ),
                                     ),
                                     SizedBox(width: 8),
                                     Text(
@@ -194,16 +208,24 @@ class _LibraryPageState extends State<LibraryPage> {
                               ],
                               Row(
                                 children: [
-                                  const Icon(Icons.folder_open_outlined, size: 18),
+                                  const Icon(
+                                    Icons.folder_open_outlined,
+                                    size: 18,
+                                  ),
                                   const SizedBox(width: 6),
                                   Expanded(
                                     child: Text(
                                       'Carpeta: ${folderName ?? 'Sin carpeta'}',
-                                      style: const TextStyle(fontWeight: FontWeight.w600),
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                      ),
                                     ),
                                   ),
                                   TextButton(
-                                    onPressed: () => _showAssignMetadataSheet(context, currentRecording),
+                                    onPressed: () => _showAssignMetadataSheet(
+                                      context,
+                                      currentRecording,
+                                    ),
                                     child: const Text('Editar'),
                                   ),
                                 ],
@@ -216,14 +238,17 @@ class _LibraryPageState extends State<LibraryPage> {
                                     ? const [
                                         Text(
                                           'Sin tags asignados',
-                                          style: TextStyle(color: Colors.blueGrey),
+                                          style: TextStyle(
+                                            color: Colors.blueGrey,
+                                          ),
                                         ),
                                       ]
                                     : selectedTags
                                           .map(
                                             (name) => Chip(
                                               label: Text(name),
-                                              visualDensity: VisualDensity.compact,
+                                              visualDensity:
+                                                  VisualDensity.compact,
                                             ),
                                           )
                                           .toList(),
@@ -241,11 +266,19 @@ class _LibraryPageState extends State<LibraryPage> {
                           orElse: () => recording,
                         );
 
+                        final hasError =
+                            provider.errorMessage != null &&
+                            !provider.isTranscribing(currentRecording.id) &&
+                            currentRecording.transcription?.trim().isNotEmpty !=
+                                true;
                         final transcriptionText =
-                            currentRecording.transcription?.trim().isNotEmpty == true
+                            currentRecording.transcription?.trim().isNotEmpty ==
+                                true
                             ? currentRecording.transcription!
                             : provider.isTranscribing(currentRecording.id)
                             ? "Analizando audio... La transcripción aparecerá aquí una vez procesada por la IA."
+                            : hasError
+                            ? "Error del servidor:\n${provider.errorMessage}\n\nVuelve a abrir este modal para reintentar."
                             : "No se pudo transcribir este audio todavía. Vuelve a abrir este modal para reintentar.";
 
                         return Text(
@@ -260,10 +293,9 @@ class _LibraryPageState extends State<LibraryPage> {
                         final userId = context.read<AuthProvider>().user?.id;
                         Map<String, dynamic>? result;
                         if (userId != null) {
-                          result = await context.read<AudioRecorderProvider>().analyzeRecordingWithIa(
-                            recording.id,
-                            userId,
-                          );
+                          result = await context
+                              .read<AudioRecorderProvider>()
+                              .analyzeRecordingWithIa(recording.id, userId);
                         }
 
                         if (!context.mounted) {
@@ -271,11 +303,13 @@ class _LibraryPageState extends State<LibraryPage> {
                         }
 
                         if (result == null) {
-                          final error = context.read<AudioRecorderProvider>().errorMessage;
+                          final error = context
+                              .read<AudioRecorderProvider>()
+                              .errorMessage;
                           if (error != null && error.trim().isNotEmpty) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text(error)),
-                            );
+                            ScaffoldMessenger.of(
+                              context,
+                            ).showSnackBar(SnackBar(content: Text(error)));
                           }
                           return;
                         }
@@ -358,7 +392,10 @@ class _LibraryPageState extends State<LibraryPage> {
                   children: [
                     const Text(
                       'Asignar carpeta y tags',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     const SizedBox(height: 12),
                     DropdownButtonFormField<String?>(
@@ -459,7 +496,9 @@ class _LibraryPageState extends State<LibraryPage> {
       builder: (dialogContext) {
         return AlertDialog(
           title: const Text('Eliminar audio'),
-          content: Text('Se eliminará "${recording.name}". Esta acción no se puede deshacer.'),
+          content: Text(
+            'Se eliminará "${recording.name}". Esta acción no se puede deshacer.',
+          ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(dialogContext, false),
@@ -468,7 +507,10 @@ class _LibraryPageState extends State<LibraryPage> {
             ElevatedButton(
               onPressed: () => Navigator.pop(dialogContext, true),
               style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-              child: const Text('Eliminar', style: TextStyle(color: Colors.white)),
+              child: const Text(
+                'Eliminar',
+                style: TextStyle(color: Colors.white),
+              ),
             ),
           ],
         );
@@ -479,7 +521,10 @@ class _LibraryPageState extends State<LibraryPage> {
       return;
     }
 
-    final deleted = await context.read<AudioRecorderProvider>().deleteRecording(recording.id, userId);
+    final deleted = await context.read<AudioRecorderProvider>().deleteRecording(
+      recording.id,
+      userId,
+    );
     if (!context.mounted) {
       return;
     }
@@ -532,7 +577,9 @@ class _LibraryPageState extends State<LibraryPage> {
                   return const Center(child: CircularProgressIndicator());
                 }
                 if (provider.errorMessage != null &&
-                    RequestErrorMapper.isNetworkMessage(provider.errorMessage!)) {
+                    RequestErrorMapper.isNetworkMessage(
+                      provider.errorMessage!,
+                    )) {
                   return Center(
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -554,7 +601,8 @@ class _LibraryPageState extends State<LibraryPage> {
                 }
                 final foldersById = <String, String>{
                   for (final f in provider.availableFolders)
-                    if ((f['id'] ?? '').isNotEmpty) f['id']!: f['name'] ?? 'Carpeta',
+                    if ((f['id'] ?? '').isNotEmpty)
+                      f['id']!: f['name'] ?? 'Carpeta',
                 };
 
                 final groupedByFolder = <String, List<Recording>>{};
@@ -563,7 +611,9 @@ class _LibraryPageState extends State<LibraryPage> {
                 for (final recording in provider.recordings) {
                   final folderId = recording.folderId;
                   if (folderId != null && foldersById.containsKey(folderId)) {
-                    groupedByFolder.putIfAbsent(folderId, () => <Recording>[]).add(recording);
+                    groupedByFolder
+                        .putIfAbsent(folderId, () => <Recording>[])
+                        .add(recording);
                   } else {
                     ungroupedRecordings.add(recording);
                   }
@@ -571,9 +621,9 @@ class _LibraryPageState extends State<LibraryPage> {
 
                 final folderIds = groupedByFolder.keys.toList()
                   ..sort(
-                    (a, b) => (foldersById[a] ?? '')
-                        .toLowerCase()
-                        .compareTo((foldersById[b] ?? '').toLowerCase()),
+                    (a, b) => (foldersById[a] ?? '').toLowerCase().compareTo(
+                      (foldersById[b] ?? '').toLowerCase(),
+                    ),
                   );
 
                 return ListView(
@@ -582,16 +632,14 @@ class _LibraryPageState extends State<LibraryPage> {
                       _buildGroupTitle('Sin carpeta'),
                       const SizedBox(height: 8),
                       ...ungroupedRecordings.map(
-                        (recording) => _buildRecordingCard(
-                          context,
-                          recording,
-                          isDarkMode,
-                        ),
+                        (recording) =>
+                            _buildRecordingCard(context, recording, isDarkMode),
                       ),
                       const SizedBox(height: 8),
                     ],
                     ...folderIds.map((folderId) {
-                      final recordingsInFolder = groupedByFolder[folderId] ?? <Recording>[];
+                      final recordingsInFolder =
+                          groupedByFolder[folderId] ?? <Recording>[];
                       final folderName = foldersById[folderId] ?? 'Carpeta';
 
                       return Container(
@@ -602,11 +650,15 @@ class _LibraryPageState extends State<LibraryPage> {
                               : Colors.white.withOpacity(0.96),
                           borderRadius: BorderRadius.circular(20),
                           border: Border.all(
-                            color: isDarkMode ? AppColors.darkBorder : AppColors.lightBorder,
+                            color: isDarkMode
+                                ? AppColors.darkBorder
+                                : AppColors.lightBorder,
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(isDarkMode ? 0.18 : 0.05),
+                              color: Colors.black.withOpacity(
+                                isDarkMode ? 0.18 : 0.05,
+                              ),
                               blurRadius: 16,
                               offset: const Offset(0, 6),
                             ),
@@ -620,7 +672,12 @@ class _LibraryPageState extends State<LibraryPage> {
                             style: const TextStyle(fontWeight: FontWeight.bold),
                           ),
                           subtitle: Text('${recordingsInFolder.length} audios'),
-                          childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+                          childrenPadding: const EdgeInsets.fromLTRB(
+                            12,
+                            0,
+                            12,
+                            8,
+                          ),
                           children: recordingsInFolder
                               .map(
                                 (recording) => _buildRecordingCard(
@@ -694,10 +751,7 @@ class _LibraryPageState extends State<LibraryPage> {
                 color: const Color(0xFF6D28D9).withOpacity(0.2),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Icon(
-                Icons.play_arrow,
-                color: Color(0xFF6D28D9),
-              ),
+              child: const Icon(Icons.play_arrow, color: Color(0xFF6D28D9)),
             ),
             const SizedBox(width: 15),
             Expanded(
@@ -706,9 +760,7 @@ class _LibraryPageState extends State<LibraryPage> {
                 children: [
                   Text(
                     recording.name,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 4),
                   Text(
@@ -721,10 +773,7 @@ class _LibraryPageState extends State<LibraryPage> {
                 ],
               ),
             ),
-            const Icon(
-              Icons.chevron_right,
-              color: Colors.blueGrey,
-            ),
+            const Icon(Icons.chevron_right, color: Colors.blueGrey),
           ],
         ),
       ),

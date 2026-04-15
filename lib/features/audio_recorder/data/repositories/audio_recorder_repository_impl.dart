@@ -55,6 +55,8 @@ class AudioRecorderRepositoryImpl implements AudioRecorderRepository {
       duration: recording.duration,
       apiAudioId: recording.apiAudioId,
       apiTranscriptionId: recording.apiTranscriptionId,
+      folderId: recording.folderId,
+      tagIds: recording.tagIds,
       transcription: recording.transcription,
     );
     recordings.add(model);
@@ -86,6 +88,8 @@ class AudioRecorderRepositoryImpl implements AudioRecorderRepository {
         duration: recording.duration,
         apiAudioId: recording.apiAudioId,
         apiTranscriptionId: recording.apiTranscriptionId,
+        folderId: recording.folderId,
+        tagIds: recording.tagIds,
         transcription: recording.transcription,
       );
       await _saveToPrefs(userId, recordings);

@@ -7,6 +7,7 @@ import 'package:record/record.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 
+import 'package:mind_voice/core/errors/request_error_mapper.dart';
 import 'package:mind_voice/core/services/shared_prefs_service.dart';
 import 'package:mind_voice/features/audio_recorder/domain/entities/recording.dart';
 import 'package:mind_voice/features/audio_recorder/domain/usecases/audio_usecases.dart';
@@ -20,8 +21,12 @@ class AudioRecorderProvider extends ChangeNotifier {
   final http.Client _httpClient;
 
   List<Recording> _recordings = [];
+  List<Map<String, String>> _availableTags = [];
+  List<Map<String, String>> _availableFolders = [];
   bool _isLoading = false;
+  bool _isLoadingTaxonomy = false;
   String? _errorMessage;
+  bool _forceLogoutRequired = false;
   bool _isRecording = false;
   final Set<String> _transcribingIds = <String>{};
   final AudioRecorder _audioRecorder = AudioRecorder();
@@ -35,11 +40,42 @@ class AudioRecorderProvider extends ChangeNotifier {
   ];
 
   List<Recording> get recordings => _recordings;
+  List<Map<String, String>> get availableTags => _availableTags;
+  List<Map<String, String>> get availableFolders => _availableFolders;
   bool get isLoading => _isLoading;
+  bool get isLoadingTaxonomy => _isLoadingTaxonomy;
   String? get errorMessage => _errorMessage;
+  bool get forceLogoutRequired => _forceLogoutRequired;
   bool get isRecording => _isRecording;
 
   bool isTranscribing(String recordingId) => _transcribingIds.contains(recordingId);
+
+  bool consumeForceLogoutFlag() {
+    final value = _forceLogoutRequired;
+    _forceLogoutRequired = false;
+    return value;
+  }
+
+  void _markHttpError(int statusCode, String fallbackMessage) {
+    if (RequestErrorMapper.isSessionInvalidStatus(statusCode)) {
+      _errorMessage = RequestErrorMapper.sessionInvalidMessage;
+      _forceLogoutRequired = true;
+      return;
+    }
+
+    _errorMessage = RequestErrorMapper.fromHttpStatus(statusCode, fallbackMessage);
+  }
+
+  void _markNetworkException(Object error) {
+    if (RequestErrorMapper.isNetworkException(error)) {
+      _errorMessage = RequestErrorMapper.networkRetryMessage;
+      debugPrint('Network error: $error');
+      return;
+    }
+
+    _errorMessage = RequestErrorMapper.fromException(error);
+    debugPrint('Unexpected error: $error');
+  }
 
   AudioRecorderProvider({
     required GetRecordingsUseCase getRecordingsUseCase,
@@ -77,6 +113,123 @@ class AudioRecorderProvider extends ChangeNotifier {
 
     _isLoading = false;
     notifyListeners();
+  }
+
+  Future<void> loadTaxonomyOptions() async {
+    _isLoadingTaxonomy = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    final token = _sharedPrefsService.getToken();
+    if (token == null || token.isEmpty) {
+      _isLoadingTaxonomy = false;
+      notifyListeners();
+      return;
+    }
+
+    try {
+      final headers = {'Authorization': 'Bearer $token'};
+      final responses = await Future.wait([
+        _httpClient.get(Uri.parse('$_baseUrl/tags/'), headers: headers),
+        _httpClient.get(Uri.parse('$_baseUrl/folders/'), headers: headers),
+      ]);
+
+      if (responses[0].statusCode == 200) {
+        final List<dynamic> tagsData = jsonDecode(responses[0].body);
+        _availableTags = tagsData
+            .whereType<Map<String, dynamic>>()
+            .map(
+              (e) => {
+                'id': (e['_id'] ?? '').toString(),
+                'name': (e['name'] ?? '').toString(),
+              },
+            )
+            .where((e) => e['id']!.isNotEmpty && e['name']!.isNotEmpty)
+            .toList();
+          } else {
+            _markHttpError(responses[0].statusCode, 'No se pudieron cargar los tags.');
+      }
+
+      if (responses[1].statusCode == 200) {
+        final List<dynamic> foldersData = jsonDecode(responses[1].body);
+        _availableFolders = foldersData
+            .whereType<Map<String, dynamic>>()
+            .map(
+              (e) => {
+                'id': (e['_id'] ?? '').toString(),
+                'name': (e['name'] ?? '').toString(),
+              },
+            )
+            .where((e) => e['id']!.isNotEmpty && e['name']!.isNotEmpty)
+            .toList();
+      } else {
+        _markHttpError(
+          responses[1].statusCode,
+          'No se pudieron cargar las carpetas.',
+        );
+      }
+    } catch (e) {
+      _markNetworkException(e);
+    } finally {
+      _isLoadingTaxonomy = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> assignRecordingMetadata(
+    String recordingId,
+    String userId, {
+    String? folderId,
+    List<String>? tagIds,
+  }) async {
+    final index = _recordings.indexWhere((rec) => rec.id == recordingId);
+    if (index == -1) {
+      return false;
+    }
+
+    final recording = _recordings[index];
+    final normalizedTagIds = (tagIds ?? recording.tagIds)
+        .where((e) => e.trim().isNotEmpty)
+        .toSet()
+        .toList();
+
+    final updatedRecording = Recording(
+      id: recording.id,
+      path: recording.path,
+      name: recording.name,
+      date: recording.date,
+      duration: recording.duration,
+      apiAudioId: recording.apiAudioId,
+      apiTranscriptionId: recording.apiTranscriptionId,
+      folderId: folderId,
+      tagIds: normalizedTagIds,
+      transcription: recording.transcription,
+    );
+
+    if (recording.apiAudioId != null) {
+      final ok = await _updateAudioRemoteMetadata(
+        recording.apiAudioId!,
+        folderId: folderId,
+        tagIds: normalizedTagIds,
+      );
+      if (!ok) {
+        _errorMessage = 'No se pudo actualizar el audio en el servidor.';
+        notifyListeners();
+        return false;
+      }
+    }
+
+    final result = await _updateRecordingUseCase(updatedRecording, userId);
+    if (!result.isSuccess) {
+      _errorMessage = result.error;
+      notifyListeners();
+      return false;
+    }
+
+    _recordings[index] = updatedRecording;
+    _errorMessage = null;
+    notifyListeners();
+    return true;
   }
 
   Future<Recording?> addRecording(Recording recording, String userId) async {
@@ -130,6 +283,8 @@ class AudioRecorderProvider extends ChangeNotifier {
         duration: recording.duration,
         apiAudioId: recording.apiAudioId,
         apiTranscriptionId: recording.apiTranscriptionId,
+        folderId: recording.folderId,
+        tagIds: recording.tagIds,
         transcription: recording.transcription,
       );
 
@@ -187,6 +342,8 @@ class AudioRecorderProvider extends ChangeNotifier {
           name: 'Recording ${DateTime.now().toIso8601String()}',
           date: DateTime.now(),
           duration: duration,
+          folderId: null,
+          tagIds: const <String>[],
         );
         final savedRecording = await addRecording(newRecording, userId);
         if (savedRecording != null) {
@@ -235,6 +392,8 @@ class AudioRecorderProvider extends ChangeNotifier {
       duration: recording.duration,
       apiAudioId: recording.apiAudioId,
       apiTranscriptionId: apiTranscriptionId,
+      folderId: recording.folderId,
+      tagIds: recording.tagIds,
       transcription: transcription,
     );
 
@@ -268,6 +427,8 @@ class AudioRecorderProvider extends ChangeNotifier {
         duration: recording.duration,
         apiAudioId: remoteId,
         apiTranscriptionId: recording.apiTranscriptionId,
+        folderId: recording.folderId,
+        tagIds: recording.tagIds,
         transcription: recording.transcription,
       );
 
@@ -331,7 +492,11 @@ class AudioRecorderProvider extends ChangeNotifier {
       final streamedResponse = await _httpClient.send(request);
       final response = await http.Response.fromStream(streamedResponse);
       if (response.statusCode != 200) {
-        debugPrint('Transcription failed: ${response.statusCode} - ${response.body}');
+        _markHttpError(
+          response.statusCode,
+          'No se pudo transcribir el audio en este momento.',
+        );
+        notifyListeners();
         return null;
       }
 
@@ -348,7 +513,8 @@ class AudioRecorderProvider extends ChangeNotifier {
 
       return null;
     } catch (e) {
-      debugPrint('Transcription error: $e');
+      _markNetworkException(e);
+      notifyListeners();
       return null;
     }
   }
@@ -372,19 +538,26 @@ class AudioRecorderProvider extends ChangeNotifier {
         ..headers['Authorization'] = 'Bearer $token'
         ..fields['duration'] = recording.duration.inSeconds.toString()
         ..fields['title'] = recording.name
+        ..fields['folderId'] = recording.folderId ?? ''
+        ..fields['tagIds'] = recording.tagIds.join(',')
         ..files.add(await http.MultipartFile.fromPath('file', recording.path));
 
       final streamedResponse = await _httpClient.send(request);
       final response = await http.Response.fromStream(streamedResponse);
       if (response.statusCode != 201 && response.statusCode != 200) {
-        debugPrint('Audio upload failed: ${response.statusCode} - ${response.body}');
+        _markHttpError(
+          response.statusCode,
+          'No se pudo subir el audio al servidor.',
+        );
+        notifyListeners();
         return null;
       }
 
       final Map<String, dynamic> data = jsonDecode(response.body);
       return data['_id']?.toString();
     } catch (e) {
-      debugPrint('Audio upload error: $e');
+      _markNetworkException(e);
+      notifyListeners();
       return null;
     }
   }
@@ -401,9 +574,19 @@ class AudioRecorderProvider extends ChangeNotifier {
         headers: {'Authorization': 'Bearer $token'},
       );
 
-      return response.statusCode == 204 || response.statusCode == 200;
+      final ok = response.statusCode == 204 || response.statusCode == 200;
+      if (!ok) {
+        _markHttpError(
+          response.statusCode,
+          'No se pudo eliminar el audio en el servidor.',
+        );
+        notifyListeners();
+      }
+
+      return ok;
     } catch (e) {
-      debugPrint('Audio delete error: $e');
+      _markNetworkException(e);
+      notifyListeners();
       return false;
     }
   }
@@ -418,7 +601,7 @@ class AudioRecorderProvider extends ChangeNotifier {
         return;
       }
 
-      await _httpClient.put(
+      final response = await _httpClient.put(
         Uri.parse('$_baseUrl/audios/$apiAudioId'),
         headers: {
           'Authorization': 'Bearer $token',
@@ -426,8 +609,57 @@ class AudioRecorderProvider extends ChangeNotifier {
         },
         body: jsonEncode({'transcription': transcription}),
       );
+
+      if (response.statusCode != 200) {
+        _markHttpError(
+          response.statusCode,
+          'No se pudo guardar la transcripción en el servidor.',
+        );
+        notifyListeners();
+      }
     } catch (e) {
-      debugPrint('Audio transcription update error: $e');
+      _markNetworkException(e);
+      notifyListeners();
+    }
+  }
+
+  Future<bool> _updateAudioRemoteMetadata(
+    String apiAudioId, {
+    String? folderId,
+    List<String> tagIds = const <String>[],
+  }) async {
+    try {
+      final token = _sharedPrefsService.getToken();
+      if (token == null || token.isEmpty) {
+        return false;
+      }
+
+      final response = await _httpClient.put(
+        Uri.parse('$_baseUrl/audios/$apiAudioId'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'folderId': folderId,
+          'tagIds': tagIds,
+        }),
+      );
+
+      final ok = response.statusCode == 200;
+      if (!ok) {
+        _markHttpError(
+          response.statusCode,
+          'No se pudieron actualizar carpeta y tags del audio.',
+        );
+        notifyListeners();
+      }
+
+      return ok;
+    } catch (e) {
+      _markNetworkException(e);
+      notifyListeners();
+      return false;
     }
   }
 
@@ -455,14 +687,19 @@ class AudioRecorderProvider extends ChangeNotifier {
       );
 
       if (response.statusCode != 200 && response.statusCode != 201) {
-        debugPrint('Create transcription record failed: ${response.statusCode} - ${response.body}');
+        _markHttpError(
+          response.statusCode,
+          'No se pudo crear el registro de transcripción.',
+        );
+        notifyListeners();
         return null;
       }
 
       final Map<String, dynamic> data = jsonDecode(response.body);
       return data['_id']?.toString();
     } catch (e) {
-      debugPrint('Create transcription record error: $e');
+      _markNetworkException(e);
+      notifyListeners();
       return null;
     }
   }
@@ -514,7 +751,10 @@ class AudioRecorderProvider extends ChangeNotifier {
       );
 
       if (response.statusCode != 200) {
-        _errorMessage = 'No se pudo analizar con IA: ${response.statusCode}';
+        _markHttpError(
+          response.statusCode,
+          'No se pudo analizar el audio con IA.',
+        );
         notifyListeners();
         return null;
       }
@@ -523,7 +763,7 @@ class AudioRecorderProvider extends ChangeNotifier {
       notifyListeners();
       return jsonDecode(response.body) as Map<String, dynamic>;
     } catch (e) {
-      _errorMessage = 'Error al analizar con IA: $e';
+      _markNetworkException(e);
       notifyListeners();
       return null;
     }
@@ -566,6 +806,8 @@ class AudioRecorderProvider extends ChangeNotifier {
         duration: recording.duration,
         apiAudioId: recording.apiAudioId,
         apiTranscriptionId: recording.apiTranscriptionId,
+        folderId: recording.folderId,
+        tagIds: recording.tagIds,
         transcription: null,
       );
 

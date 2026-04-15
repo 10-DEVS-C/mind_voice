@@ -13,10 +13,14 @@ class Recording {
     required this.duration,
     this.apiAudioId,
     this.apiTranscriptionId,
+    this.folderId,
+    this.tagIds = const <String>[],
     this.transcription,
   });
 
   final String? apiAudioId;
   final String? apiTranscriptionId;
+  final String? folderId;
+  final List<String> tagIds;
   final String? transcription;
 }

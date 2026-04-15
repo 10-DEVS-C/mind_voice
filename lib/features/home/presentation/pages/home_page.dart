@@ -6,10 +6,12 @@ import '../../../../features/audio_recorder/presentation/pages/record_page.dart'
 import '../../../../features/insights/presentation/pages/insights_page.dart';
 import '../../../../features/home/presentation/widgets/settings_drawer.dart';
 import '../../../../core/constants/app_assets.dart';
+import '../../../../core/errors/request_error_mapper.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/localization/app_localizations.dart';
 import '../../../../features/audio_recorder/presentation/providers/audio_recorder_provider.dart';
 import '../../../../features/auth/presentation/providers/auth_provider.dart';
+import '../../../../features/auth/presentation/pages/login_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -22,6 +24,7 @@ class _HomePageState extends State<HomePage> {
   int _currentIndex = 1;
   Timer? _timer;
   int _seconds = 0;
+  String? _lastAudioErrorShown;
 
   @override
   void initState() {
@@ -61,6 +64,45 @@ class _HomePageState extends State<HomePage> {
     final audioProvider = context.watch<AudioRecorderProvider>();
     final isRecording = audioProvider.isRecording;
     final userId = context.watch<AuthProvider>().user?.id;
+
+    if (audioProvider.forceLogoutRequired) {
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        if (!mounted) {
+          return;
+        }
+        final provider = context.read<AudioRecorderProvider>();
+        if (!provider.consumeForceLogoutFlag()) {
+          return;
+        }
+        await context.read<AuthProvider>().logout();
+        if (!mounted) {
+          return;
+        }
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const LoginPage()),
+          (route) => false,
+        );
+      });
+    }
+
+    final currentError = audioProvider.errorMessage;
+    if (currentError != null &&
+        RequestErrorMapper.isNetworkMessage(currentError) &&
+        currentError != _lastAudioErrorShown) {
+      _lastAudioErrorShown = currentError;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) {
+          return;
+        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(currentError)),
+        );
+      });
+    }
+
+    if (currentError == null) {
+      _lastAudioErrorShown = null;
+    }
 
     // Sync timer with provider state
     if (isRecording && (_timer == null || !_timer!.isActive)) {

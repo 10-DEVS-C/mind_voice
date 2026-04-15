@@ -9,6 +9,8 @@ class RecordingModel extends Recording {
     required Duration duration,
     String? apiAudioId,
     String? apiTranscriptionId,
+    String? folderId,
+    List<String> tagIds = const <String>[],
     String? transcription,
   }) : super(
          id: id,
@@ -18,6 +20,8 @@ class RecordingModel extends Recording {
          duration: duration,
          apiAudioId: apiAudioId,
          apiTranscriptionId: apiTranscriptionId,
+         folderId: folderId,
+         tagIds: tagIds,
          transcription: transcription,
        );
 
@@ -30,6 +34,10 @@ class RecordingModel extends Recording {
       duration: Duration(milliseconds: json['durationMs']),
       apiAudioId: json['apiAudioId'],
       apiTranscriptionId: json['apiTranscriptionId'],
+      folderId: json['folderId'],
+      tagIds: (json['tagIds'] as List<dynamic>? ?? const <dynamic>[])
+          .map((e) => e.toString())
+          .toList(),
       transcription: json['transcription'],
     );
   }
@@ -43,6 +51,8 @@ class RecordingModel extends Recording {
       'durationMs': duration.inMilliseconds,
       'apiAudioId': apiAudioId,
       'apiTranscriptionId': apiTranscriptionId,
+      'folderId': folderId,
+      'tagIds': tagIds,
       'transcription': transcription,
     };
   }

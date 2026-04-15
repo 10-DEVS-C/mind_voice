@@ -1,11 +1,16 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:provider/provider.dart';
 
 import '../../../../config/service_locator.dart';
+import '../../../../core/errors/request_error_mapper.dart';
 import '../../../../core/services/shared_prefs_service.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../auth/presentation/pages/login_page.dart';
+import '../../../auth/presentation/providers/auth_provider.dart';
 
 class TagsPage extends StatefulWidget {
   const TagsPage({super.key});
@@ -39,6 +44,36 @@ class _TagsPageState extends State<TagsPage> {
     super.dispose();
   }
 
+  Future<void> _redirectToLogin() async {
+    await context.read<AuthProvider>().logout();
+    if (!mounted) {
+      return;
+    }
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const LoginPage()),
+      (route) => false,
+    );
+  }
+
+  Future<bool> _handleHttpStatus(
+    int statusCode,
+    String operationMessage,
+  ) async {
+    if (RequestErrorMapper.isSessionInvalidStatus(statusCode)) {
+      await _redirectToLogin();
+      return true;
+    }
+
+    if (!mounted) {
+      return true;
+    }
+
+    setState(() {
+      _error = RequestErrorMapper.fromHttpStatus(statusCode, operationMessage);
+    });
+    return false;
+  }
+
   Future<void> _loadTags() async {
     setState(() {
       _isLoading = true;
@@ -61,10 +96,19 @@ class _TagsPageState extends State<TagsPage> {
       );
 
       if (response.statusCode != 200) {
+        final keepOnPage = await _handleHttpStatus(
+          response.statusCode,
+          'No se pudieron cargar los tags.',
+        );
+        if (!mounted) {
+          return;
+        }
         setState(() {
           _isLoading = false;
-          _error = 'No se pudieron cargar los tags (${response.statusCode}).';
         });
+        if (!keepOnPage) {
+          _showSnack(_error!);
+        }
         return;
       }
 
@@ -81,10 +125,15 @@ class _TagsPageState extends State<TagsPage> {
           ..addAll(parsed);
         _isLoading = false;
       });
+    } on SocketException {
+      setState(() {
+        _isLoading = false;
+        _error = RequestErrorMapper.networkRetryMessage;
+      });
     } catch (_) {
       setState(() {
         _isLoading = false;
-        _error = 'Error de red al cargar los tags.';
+        _error = 'No se pudieron cargar los tags. Intenta de nuevo.';
       });
     }
   }
@@ -116,7 +165,13 @@ class _TagsPageState extends State<TagsPage> {
       );
 
       if (response.statusCode != 201 && response.statusCode != 200) {
-        _showSnack('No se pudo crear el tag (${response.statusCode}).');
+        final keepOnPage = await _handleHttpStatus(
+          response.statusCode,
+          'No se pudo crear el tag.',
+        );
+        if (!keepOnPage) {
+          _showSnack(_error!);
+        }
         setState(() {
           _isCreating = false;
         });
@@ -135,11 +190,16 @@ class _TagsPageState extends State<TagsPage> {
       });
       _tagController.clear();
       _showSnack('Tag creado correctamente.');
+    } on SocketException {
+      setState(() {
+        _isCreating = false;
+      });
+      _showSnack(RequestErrorMapper.networkRetryMessage);
     } catch (_) {
       setState(() {
         _isCreating = false;
       });
-      _showSnack('Error de red al crear el tag.');
+      _showSnack('No se pudo crear el tag. Intenta de nuevo.');
     }
   }
 
@@ -157,7 +217,13 @@ class _TagsPageState extends State<TagsPage> {
       );
 
       if (response.statusCode != 204 && response.statusCode != 200) {
-        _showSnack('No se pudo eliminar el tag (${response.statusCode}).');
+        final keepOnPage = await _handleHttpStatus(
+          response.statusCode,
+          'No se pudo eliminar el tag.',
+        );
+        if (!keepOnPage) {
+          _showSnack(_error!);
+        }
         return;
       }
 
@@ -165,8 +231,10 @@ class _TagsPageState extends State<TagsPage> {
         _tags.removeWhere((t) => t.id == tag.id);
       });
       _showSnack('Tag eliminado.');
+    } on SocketException {
+      _showSnack(RequestErrorMapper.networkRetryMessage);
     } catch (_) {
-      _showSnack('Error de red al eliminar el tag.');
+      _showSnack('No se pudo eliminar el tag. Intenta de nuevo.');
     }
   }
 

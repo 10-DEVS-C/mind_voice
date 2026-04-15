@@ -6,6 +6,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../audio_recorder/presentation/providers/audio_recorder_provider.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../auth/presentation/pages/login_page.dart';
+import '../../../folders/presentation/pages/folders_page.dart';
 import '../../../tags/presentation/pages/tags_page.dart';
 import '../pages/plans_page.dart';
 
@@ -26,6 +27,12 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
   void _openTagsPage(BuildContext context) {
     Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => const TagsPage()),
+    );
+  }
+
+  void _openFoldersPage(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const FoldersPage()),
     );
   }
 
@@ -271,10 +278,9 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                   ),
                 ),
                 const SizedBox(height: 24),
-                _buildSectionTitle(context, l10n.translate('profile')),
+                _buildSectionTitle(context, 'Folders'),
                 const SizedBox(height: 8),
                 Container(
-                  padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
                     color: Theme.of(context).cardColor,
                     borderRadius: BorderRadius.circular(18),
@@ -284,36 +290,15 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                           : AppColors.lightBorder,
                     ),
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('${l10n.translate('nameLabel')}: ${user?.name ?? ''}'),
-                      const SizedBox(height: 4),
-                      Text('${l10n.translate('username')}: ${user?.username ?? ''}'),
-                      const SizedBox(height: 4),
-                      Text('${l10n.translate('email')}: ${user?.email ?? ''}'),
-                      const SizedBox(height: 8),
-                      ListTile(
-                        dense: true,
-                        contentPadding: EdgeInsets.zero,
-                        leading: const Icon(
-                          Icons.workspace_premium_outlined,
-                          size: 20,
-                          color: AppColors.primary,
-                        ),
-                        title: Text(l10n.translate('planDetails')),
-                        trailing: const Icon(Icons.chevron_right_rounded),
-                        onTap: () => _openPlansPage(context),
-                      ),
-                      const SizedBox(height: 10),
-                      OutlinedButton.icon(
-                        onPressed: () => _showEditProfileSheet(context),
-                        icon: const Icon(Icons.edit_outlined, size: 18),
-                        label: Text(l10n.translate('editProfile')),
-                      ),
-                    ],
+                  child: ListTile(
+                    leading: const Icon(Icons.folder_open_outlined),
+                    title: const Text('Gestionar folders'),
+                    subtitle: const Text('Crear y ver carpetas'),
+                    trailing: const Icon(Icons.chevron_right_rounded),
+                    onTap: () => _openFoldersPage(context),
                   ),
                 ),
+                const SizedBox(height: 24),
               ],
             ),
           ),

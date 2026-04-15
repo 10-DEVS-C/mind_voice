@@ -361,8 +361,38 @@ class AudioRecorderProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> startRecording() async {
+  int getTodayRecordingsCount() {
+    final now = DateTime.now();
+    return _recordings.where((r) {
+      // Solo contar grabaciones locales ó grabaciones del servidor con fecha de hoy
+      // (asumimos que la fecha del Recording ya está en hora local o sincronizada)
+      return r.date.year == now.year &&
+          r.date.month == now.month &&
+          r.date.day == now.day;
+    }).length;
+  }
+
+  bool canStartRecording(String plan) {
+    final p = plan.toLowerCase();
+    if (p == 'business' || p == 'admin') return true;
+
+    final limit = p == 'professional' ? 20 : 3;
+    final count = getTodayRecordingsCount();
+
+    return count < limit;
+  }
+
+  Future<void> startRecording(String plan) async {
     if (_isRecording) return;
+    
+    if (!canStartRecording(plan)) {
+      final p = plan.toLowerCase();
+      final limit = p == 'professional' ? 20 : 3;
+      _errorMessage = "Límite alcanzado: Tu plan ${plan.capitalize()} permite $limit notas por día.";
+      notifyListeners();
+      return;
+    }
+
     try {
       if (await _audioRecorder.hasPermission()) {
         // Permission granted

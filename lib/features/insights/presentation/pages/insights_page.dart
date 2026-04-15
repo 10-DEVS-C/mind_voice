@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/services/pdf_export_service.dart';
 import '../../../../features/audio_recorder/presentation/providers/audio_recorder_provider.dart';
 
 class InsightsPage extends StatelessWidget {
@@ -77,17 +78,33 @@ class InsightsPage extends StatelessWidget {
                 child: Text(
                   title,
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 26,
-                    letterSpacing: -0.8,
-                  ),
+                        fontWeight: FontWeight.bold,
+                        fontSize: 26,
+                        letterSpacing: -0.8,
+                      ),
                 ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.picture_as_pdf_outlined,
+                    color: Color(0xFF6D28D9)),
+                onPressed: () async {
+                  try {
+                    await PdfExportService.exportAnalysis(result);
+                  } catch (e) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Error al exportar PDF: $e')),
+                      );
+                    }
+                  }
+                },
+                tooltip: 'Exportar PDF',
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
           Text(
-            'Generado exitosamente a partir de tu audio',
+            'Reporte estructurado por IA',
             style: TextStyle(
               color: isDarkMode
                   ? AppColors.textSecondaryDark

@@ -950,6 +950,7 @@ class _LibraryPageState extends State<LibraryPage> {
     final duration =
         "${recording.duration.inMinutes.toString().padLeft(2, '0')}:${(recording.duration.inSeconds % 60).toString().padLeft(2, '0')}";
     final date = DateFormat('dd MMM yyyy').format(recording.date);
+    final isLocal = recording.path.isNotEmpty;
 
     return GestureDetector(
       onTap: () => _showTranscriptionModal(context, recording),
@@ -958,11 +959,17 @@ class _LibraryPageState extends State<LibraryPage> {
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: isDarkMode
-              ? AppColors.darkSurface.withOpacity(0.92)
-              : Colors.white.withOpacity(0.96),
+              ? (isLocal
+                  ? AppColors.darkSurface.withOpacity(0.92)
+                  : AppColors.darkSurface.withOpacity(0.4))
+              : (isLocal
+                  ? Colors.white.withOpacity(0.96)
+                  : Colors.grey.withOpacity(0.1)),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: isDarkMode ? AppColors.darkBorder : AppColors.lightBorder,
+            color: isDarkMode
+                ? (isLocal ? AppColors.darkBorder : Colors.transparent)
+                : (isLocal ? AppColors.lightBorder : Colors.transparent),
           ),
           boxShadow: [
             BoxShadow(
@@ -977,10 +984,15 @@ class _LibraryPageState extends State<LibraryPage> {
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: const Color(0xFF6D28D9).withOpacity(0.2),
+                color: isLocal
+                    ? const Color(0xFF6D28D9).withOpacity(0.2)
+                    : Colors.grey.withOpacity(0.2),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Icon(Icons.play_arrow, color: Color(0xFF6D28D9)),
+              child: Icon(
+                isLocal ? Icons.play_arrow : Icons.cloud_off_outlined,
+                color: isLocal ? const Color(0xFF6D28D9) : Colors.grey,
+              ),
             ),
             const SizedBox(width: 15),
             Expanded(
@@ -989,13 +1001,16 @@ class _LibraryPageState extends State<LibraryPage> {
                 children: [
                   Text(
                     recording.name,
-                    style: const TextStyle(fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: isLocal ? null : Colors.grey,
+                    ),
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    "$duration • $date",
-                    style: const TextStyle(
-                      color: Colors.blueGrey,
+                    "${isLocal ? duration : 'No local'} • $date",
+                    style: TextStyle(
+                      color: isLocal ? Colors.blueGrey : Colors.grey[400],
                       fontSize: 12,
                     ),
                   ),

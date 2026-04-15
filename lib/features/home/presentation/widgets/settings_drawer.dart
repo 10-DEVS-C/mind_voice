@@ -253,10 +253,6 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                 const SizedBox(height: 8),
                 _buildThemeSelector(context, l10n, settingsProvider),
                 const SizedBox(height: 24),
-                _buildSectionTitle(context, l10n.translate('language')),
-                const SizedBox(height: 8),
-                _buildLanguageSelector(context, l10n, settingsProvider),
-                const SizedBox(height: 24),
                 _buildSectionTitle(context, 'Tags'),
                 const SizedBox(height: 8),
                 Container(
@@ -396,39 +392,7 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
     );
   }
 
-  Widget _buildLanguageSelector(
-    BuildContext context,
-    AppLocalizations l10n,
-    SettingsProvider provider,
-  ) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: Theme.of(context).brightness == Brightness.dark
-              ? AppColors.darkBorder
-              : AppColors.lightBorder,
-        ),
-      ),
-      child: Column(
-        children: [
-          _buildRadioTile<Locale>(
-            title: 'English',
-            value: const Locale('en'),
-            groupValue: provider.locale,
-            onChanged: provider.updateLocale,
-          ),
-          _buildRadioTile<Locale>(
-            title: 'Español',
-            value: const Locale('es'),
-            groupValue: provider.locale,
-            onChanged: provider.updateLocale,
-          ),
-        ],
-      ),
-    );
-  }
+
 
   Widget _buildRadioTile<T>({
     required String title,

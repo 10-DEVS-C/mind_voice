@@ -67,6 +67,7 @@ class _RecordingPlayerWidgetState extends State<RecordingPlayerWidget> {
   Future<void> _setSource() async {
     try {
       await _audioPlayer.setReleaseMode(ReleaseMode.stop);
+      if (widget.audioPath.isEmpty) return;
       await _audioPlayer.setSource(DeviceFileSource(widget.audioPath));
       // Optionally update duration if known immediately?
       // No, let listener handle it.
@@ -110,6 +111,37 @@ class _RecordingPlayerWidgetState extends State<RecordingPlayerWidget> {
 
   @override
   Widget build(BuildContext context) {
+    if (widget.audioPath.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+        decoration: BoxDecoration(
+          color: Theme.of(context).cardColor,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Theme.of(context).dividerColor),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.cloud_outlined, color: Colors.blueGrey),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Audio en la nube',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  Text(
+                    'Este archivo no está en tu dispositivo local.',
+                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
       decoration: BoxDecoration(

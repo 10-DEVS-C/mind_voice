@@ -110,13 +110,49 @@ class AudioRecorderProvider extends ChangeNotifier {
 
     if (result.isSuccess) {
       _recordings = List.from(result.data!);
-      final hadDummyData = _cleanupDummyTranscriptions(userId);
+      
+      // Fetch remote records to merge
+      final token = _sharedPrefsService.getToken();
+      if (token != null && token.isNotEmpty) {
+        try {
+          final resp = await _httpClient.get(
+            Uri.parse('$_baseUrl/audios/'),
+            headers: {'Authorization': 'Bearer $token'},
+          );
+          if (resp.statusCode == 200) {
+            final List<dynamic> remoteData = jsonDecode(resp.body);
+            for (final remote in remoteData) {
+              final apiId = remote['_id']?.toString();
+              if (apiId == null) continue;
+
+              final existsLocally = _recordings.any((r) => r.apiAudioId == apiId);
+              if (!existsLocally) {
+                // Add a virtual recording (it exists on server but not on this device)
+                _recordings.add(Recording(
+                  id: 'remote_$apiId',
+                  path: '', // Empty path means it exists on server but not locally
+                  name: remote['title'] ?? 'Audio remoto',
+                  date: remote['createdAt'] != null 
+                      ? DateTime.parse(remote['createdAt']) 
+                      : DateTime.now(),
+                  duration: Duration(seconds: (remote['duration'] ?? 0).toInt()),
+                  apiAudioId: apiId,
+                  apiTranscriptionId: remote['transcriptionId']?.toString(),
+                  folderId: remote['folderId']?.toString(),
+                  tagIds: (remote['tagIds'] as List?)?.map((e) => e.toString()).toList() ?? [],
+                  transcription: remote['transcription']?.toString(),
+                ));
+              }
+            }
+          }
+        } catch (e) {
+          debugPrint("Error fetching remote audios: $e");
+        }
+      }
+
+      _cleanupDummyTranscriptions(userId);
       // Sort by date descending
       _recordings.sort((a, b) => b.date.compareTo(a.date));
-
-      if (hadDummyData) {
-        _recordings.sort((a, b) => b.date.compareTo(a.date));
-      }
     } else {
       _errorMessage = result.error;
     }
@@ -427,6 +463,12 @@ class AudioRecorderProvider extends ChangeNotifier {
           return;
         }
       }
+    }
+
+    if (recording.path.isEmpty) {
+      // No podemos transcribir localmente si no hay archivo, 
+      // y ya verificamos que no hay transcripción en el servidor arriba.
+      return;
     }
 
     final transcription = await _transcribeAudio(recording.path);

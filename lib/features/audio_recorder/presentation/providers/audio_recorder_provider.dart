@@ -40,10 +40,15 @@ class AudioRecorderProvider extends ChangeNotifier {
     'dummy para demostración',
   ];
 
+  Map<String, dynamic>? _lastAiResult;
+  bool _isAnalyzing = false;
+
   List<Recording> get recordings => _recordings;
   List<Map<String, String>> get availableTags => _availableTags;
+  Map<String, dynamic>? get lastAiResult => _lastAiResult;
   List<Map<String, String>> get availableFolders => _availableFolders;
   bool get isLoading => _isLoading;
+  bool get isAnalyzing => _isAnalyzing;
   bool get isLoadingTaxonomy => _isLoadingTaxonomy;
   String? get errorMessage => _errorMessage;
   bool get forceLogoutRequired => _forceLogoutRequired;
@@ -283,6 +288,19 @@ class AudioRecorderProvider extends ChangeNotifier {
     final index = _recordings.indexWhere((rec) => rec.id == id);
     if (index != -1) {
       final recording = _recordings[index];
+
+      if (recording.apiAudioId != null) {
+        final ok = await _updateAudioRemoteTitle(
+          recording.apiAudioId!,
+          newName,
+        );
+        if (!ok) {
+          _errorMessage = 'No se pudo actualizar el nombre en el servidor.';
+          notifyListeners();
+          return;
+        }
+      }
+
       final updatedRecording = Recording(
         id: recording.id,
         path: recording.path,
@@ -374,12 +392,49 @@ class AudioRecorderProvider extends ChangeNotifier {
     Recording recording,
     String userId,
   ) async {
+    String? finalTranscription;
+    String? apiTranscriptionId = recording.apiTranscriptionId;
+
+    if (recording.apiAudioId != null) {
+      final existingData = await _checkExistingTranscription(
+        recording.apiAudioId!,
+      );
+      if (existingData != null) {
+        finalTranscription = existingData['text'];
+        apiTranscriptionId = existingData['id'];
+
+        if (finalTranscription != null &&
+            finalTranscription.trim().isNotEmpty) {
+          final updatedRecording = Recording(
+            id: recording.id,
+            path: recording.path,
+            name: recording.name,
+            date: recording.date,
+            duration: recording.duration,
+            apiAudioId: recording.apiAudioId,
+            apiTranscriptionId: apiTranscriptionId,
+            folderId: recording.folderId,
+            tagIds: recording.tagIds,
+            transcription: finalTranscription,
+          );
+
+          await _updateRecordingUseCase(updatedRecording, userId);
+          final index = _recordings.indexWhere((rec) => rec.id == recording.id);
+          if (index != -1) {
+            _recordings[index] = updatedRecording;
+            notifyListeners();
+          }
+          return;
+        }
+      }
+    }
+
     final transcription = await _transcribeAudio(recording.path);
     if (transcription == null || transcription.trim().isEmpty) {
       return;
     }
 
-    var apiTranscriptionId = recording.apiTranscriptionId;
+    finalTranscription = transcription;
 
     if (recording.apiAudioId != null) {
       await _updateAudioRemoteTranscription(
@@ -407,21 +462,43 @@ class AudioRecorderProvider extends ChangeNotifier {
       apiTranscriptionId: apiTranscriptionId,
       folderId: recording.folderId,
       tagIds: recording.tagIds,
-      transcription: transcription,
+      transcription: finalTranscription,
     );
 
     final result = await _updateRecordingUseCase(updatedRecording, userId);
-    if (!result.isSuccess) {
-      return;
-    }
+    if (!result.isSuccess) return;
 
     final index = _recordings.indexWhere((rec) => rec.id == recording.id);
-    if (index == -1) {
-      return;
-    }
+    if (index == -1) return;
 
     _recordings[index] = updatedRecording;
     notifyListeners();
+  }
+
+  Future<Map<String, String>?> _checkExistingTranscription(
+    String apiAudioId,
+  ) async {
+    try {
+      final token = _sharedPrefsService.getToken();
+      if (token == null || token.isEmpty) return null;
+
+      final response = await _httpClient.get(
+        Uri.parse('$_baseUrl/transcriptions/?audioId=$apiAudioId'),
+        headers: {'Authorization': 'Bearer $token'},
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        if (data.isNotEmpty) {
+          final first = data.first as Map<String, dynamic>;
+          return {
+            'id': first['_id']?.toString() ?? '',
+            'text': first['text']?.toString() ?? '',
+          };
+        }
+      }
+    } catch (_) {}
+    return null;
   }
 
   Future<void> _syncRecordingWithApiAndTranscription(
@@ -501,12 +578,14 @@ class AudioRecorderProvider extends ChangeNotifier {
               Uri.parse('$_baseUrl/mindvoice-api/analyze/audio'),
             )
             ..headers['Authorization'] = 'Bearer $token'
-            ..files.add(await http.MultipartFile.fromPath(
-              'audio', 
-              path, 
-              contentType: MediaType('audio', 'mp4'),
-              filename: path.split('/').last.split('\\').last,
-            ));
+            ..files.add(
+              await http.MultipartFile.fromPath(
+                'audio',
+                path,
+                contentType: MediaType('audio', 'mp4'),
+                filename: path.split('/').last.split('\\').last,
+              ),
+            );
 
       final streamedResponse = await _httpClient.send(request);
       final response = await http.Response.fromStream(streamedResponse);
@@ -564,8 +643,8 @@ class AudioRecorderProvider extends ChangeNotifier {
             ..fields['tagIds'] = recording.tagIds.join(',')
             ..files.add(
               await http.MultipartFile.fromPath(
-                'file', 
-                recording.path, 
+                'file',
+                recording.path,
                 contentType: MediaType('audio', 'mp4'),
                 filename: recording.path.split('/').last.split('\\').last,
               ),
@@ -689,6 +768,39 @@ class AudioRecorderProvider extends ChangeNotifier {
     }
   }
 
+  Future<bool> _updateAudioRemoteTitle(String apiAudioId, String title) async {
+    try {
+      final token = _sharedPrefsService.getToken();
+      if (token == null || token.isEmpty) {
+        return false;
+      }
+
+      final response = await _httpClient.put(
+        Uri.parse('$_baseUrl/audios/$apiAudioId'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({'title': title}),
+      );
+
+      final ok = response.statusCode == 200;
+      if (!ok) {
+        _markHttpError(
+          response.statusCode,
+          'No se pudo actualizar el nombre del audio en el servidor.',
+        );
+        notifyListeners();
+      }
+
+      return ok;
+    } catch (e) {
+      _markNetworkException(e);
+      notifyListeners();
+      return false;
+    }
+  }
+
   Future<String?> _createTranscriptionRecord(
     String apiAudioId,
     String transcription,
@@ -734,35 +846,58 @@ class AudioRecorderProvider extends ChangeNotifier {
     String recordingId,
     String userId,
   ) async {
-    final index = _recordings.indexWhere((rec) => rec.id == recordingId);
-    if (index == -1) {
-      _errorMessage = 'No se encontró la grabación a analizar.';
-      notifyListeners();
-      return null;
-    }
-
-    var recording = _recordings[index];
-    if (!_hasRealTranscription(recording.transcription)) {
-      await transcribeRecordingIfNeeded(recordingId, userId);
-      final refreshIndex = _recordings.indexWhere(
-        (rec) => rec.id == recordingId,
-      );
-      if (refreshIndex == -1) {
-        _errorMessage = 'No se encontró la grabación a analizar.';
-        notifyListeners();
-        return null;
-      }
-      recording = _recordings[refreshIndex];
-    }
-
-    final token = _sharedPrefsService.getToken();
-    if (token == null || token.isEmpty) {
-      _errorMessage = 'Sesión expirada. Inicia sesión de nuevo.';
-      notifyListeners();
-      return null;
-    }
+    _isAnalyzing = true;
+    notifyListeners();
 
     try {
+      final index = _recordings.indexWhere((rec) => rec.id == recordingId);
+      if (index == -1) {
+        _errorMessage = 'No se encontró la grabación a analizar.';
+        return null;
+      }
+
+      var recording = _recordings[index];
+
+      final token = _sharedPrefsService.getToken();
+      if (token == null || token.isEmpty) {
+        _errorMessage = 'Sesión expirada. Inicia sesión de nuevo.';
+        return null;
+      }
+
+      // 1) REVISIÓN DE BASE DE DATOS PARA ANÁLISIS EXISTENTE
+      if (recording.apiTranscriptionId != null &&
+          recording.apiTranscriptionId!.isNotEmpty) {
+        final existingRes = await _httpClient.get(
+          Uri.parse(
+            '$_baseUrl/ai-analyses/?transcriptionId=${recording.apiTranscriptionId}',
+          ),
+          headers: {'Authorization': 'Bearer $token'},
+        );
+        if (existingRes.statusCode == 200) {
+          final List<dynamic> data = jsonDecode(existingRes.body);
+          if (data.isNotEmpty) {
+            final firstAnalysis = data.first as Map<String, dynamic>;
+            if (firstAnalysis.containsKey('result')) {
+              _lastAiResult = firstAnalysis['result'] as Map<String, dynamic>;
+              _errorMessage = null;
+              return _lastAiResult;
+            }
+          }
+        }
+      }
+
+      if (!_hasRealTranscription(recording.transcription)) {
+        await transcribeRecordingIfNeeded(recordingId, userId);
+        final refreshIndex = _recordings.indexWhere(
+          (rec) => rec.id == recordingId,
+        );
+        if (refreshIndex == -1) {
+          _errorMessage = 'No se encontró la grabación a analizar.';
+          return null;
+        }
+        recording = _recordings[refreshIndex];
+      }
+
       final Map<String, dynamic> payload =
           recording.apiTranscriptionId != null &&
               recording.apiTranscriptionId!.isNotEmpty
@@ -783,17 +918,18 @@ class AudioRecorderProvider extends ChangeNotifier {
           response.statusCode,
           'No se pudo analizar el audio con IA.',
         );
-        notifyListeners();
         return null;
       }
 
+      _lastAiResult = jsonDecode(response.body) as Map<String, dynamic>;
       _errorMessage = null;
-      notifyListeners();
-      return jsonDecode(response.body) as Map<String, dynamic>;
+      return _lastAiResult;
     } catch (e) {
       _markNetworkException(e);
-      notifyListeners();
       return null;
+    } finally {
+      _isAnalyzing = false;
+      notifyListeners();
     }
   }
 

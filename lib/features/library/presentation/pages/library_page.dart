@@ -20,6 +20,9 @@ class LibraryPage extends StatefulWidget {
 }
 
 class _LibraryPageState extends State<LibraryPage> {
+  String? _selectedFilterTagId;
+  String? _selectedFilterFolderId;
+
   @override
   void initState() {
     super.initState();
@@ -118,25 +121,33 @@ class _LibraryPageState extends State<LibraryPage> {
                       ],
                     ),
                     const SizedBox(height: 16),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Expanded(
-                          child: Text(
-                            recording.name,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w600,
-                              fontSize: 16,
+                    Consumer<AudioRecorderProvider>(
+                      builder: (context, provider, child) {
+                        final currentRecording = provider.recordings.firstWhere(
+                          (rec) => rec.id == recording.id,
+                          orElse: () => recording,
+                        );
+                        return Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Expanded(
+                              child: Text(
+                                currentRecording.name,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 16,
+                                ),
+                              ),
                             ),
-                          ),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.edit, size: 20),
-                          onPressed: () {
-                            _showEditTitleDialog(context, recording);
-                          },
-                        ),
-                      ],
+                            IconButton(
+                              icon: const Icon(Icons.edit, size: 20),
+                              onPressed: () {
+                                _showEditTitleDialog(context, currentRecording);
+                              },
+                            ),
+                          ],
+                        );
+                      },
                     ),
                     const SizedBox(height: 8),
                     Text(
@@ -288,50 +299,65 @@ class _LibraryPageState extends State<LibraryPage> {
                       },
                     ),
                     const SizedBox(height: 24),
-                    ElevatedButton(
-                      onPressed: () async {
-                        final userId = context.read<AuthProvider>().user?.id;
-                        Map<String, dynamic>? result;
-                        if (userId != null) {
-                          result = await context
-                              .read<AudioRecorderProvider>()
-                              .analyzeRecordingWithIa(recording.id, userId);
-                        }
+                    Consumer<AudioRecorderProvider>(
+                      builder: (context, provider, child) {
+                        return ElevatedButton(
+                          onPressed: provider.isAnalyzing
+                              ? null
+                              : () async {
+                                  final userId = context.read<AuthProvider>().user?.id;
+                                  Map<String, dynamic>? result;
+                                  if (userId != null) {
+                                    result = await context
+                                        .read<AudioRecorderProvider>()
+                                        .analyzeRecordingWithIa(recording.id, userId);
+                                  }
 
-                        if (!context.mounted) {
-                          return;
-                        }
+                                  if (!context.mounted) {
+                                    return;
+                                  }
 
-                        if (result == null) {
-                          final error = context
-                              .read<AudioRecorderProvider>()
-                              .errorMessage;
-                          if (error != null && error.trim().isNotEmpty) {
-                            ScaffoldMessenger.of(
-                              context,
-                            ).showSnackBar(SnackBar(content: Text(error)));
-                          }
-                          return;
-                        }
+                                  if (result == null) {
+                                    final error = context
+                                        .read<AudioRecorderProvider>()
+                                        .errorMessage;
+                                    if (error != null && error.trim().isNotEmpty) {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(SnackBar(content: Text(error)));
+                                    }
+                                    return;
+                                  }
 
-                        Navigator.pop(context);
-                        widget.onNavigateToInsights();
+                                  Navigator.pop(context);
+                                  widget.onNavigateToInsights();
+                                },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF6D28D9),
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                          ),
+                          child: provider.isAnalyzing
+                              ? const SizedBox(
+                                  width: 24,
+                                  height: 24,
+                                  child: CircularProgressIndicator(
+                                    color: Colors.white,
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Text(
+                                  "VER DOC",
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                        );
                       },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF6D28D9),
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                      ),
-                      child: const Text(
-                        "VER DOC",
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
                     ),
                   ],
                 ),
@@ -569,7 +595,180 @@ class _LibraryPageState extends State<LibraryPage> {
               fontWeight: FontWeight.w500,
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 12),
+          Consumer<AudioRecorderProvider>(
+            builder: (context, provider, child) {
+              if (provider.availableTags.isEmpty &&
+                  provider.availableFolders.isEmpty) {
+                return const SizedBox.shrink();
+              }
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (provider.availableFolders.isNotEmpty) ...[
+                    const Padding(
+                      padding: EdgeInsets.only(left: 4, bottom: 8),
+                      child: Text(
+                        'Carpetas',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.blueGrey,
+                        ),
+                      ),
+                    ),
+                    SizedBox(
+                      height: 38,
+                      child: ListView(
+                        scrollDirection: Axis.horizontal,
+                        physics: const BouncingScrollPhysics(),
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.only(right: 8),
+                            child: FilterChip(
+                              avatar: Icon(
+                                Icons.all_inclusive,
+                                size: 16,
+                                color: _selectedFilterFolderId == null
+                                    ? const Color(0xFF6D28D9)
+                                    : Colors.grey,
+                              ),
+                              label: const Text('Todo'),
+                              selected: _selectedFilterFolderId == null,
+                              showCheckmark: false,
+                              onSelected: (_) {
+                                setState(() => _selectedFilterFolderId = null);
+                              },
+                              selectedColor:
+                                  const Color(0xFF6D28D9).withOpacity(0.12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                side: BorderSide(
+                                  color: _selectedFilterFolderId == null
+                                      ? const Color(0xFF6D28D9).withOpacity(0.3)
+                                      : Colors.grey.withOpacity(0.2),
+                                ),
+                              ),
+                            ),
+                          ),
+                          ...provider.availableFolders.map((folder) {
+                            final fId = folder['id'];
+                            final fName = folder['name'] ?? 'Folder';
+                            final isSelected = _selectedFilterFolderId == fId;
+                            return Padding(
+                              padding: const EdgeInsets.only(right: 8),
+                              child: FilterChip(
+                                avatar: Icon(
+                                  Icons.folder_open,
+                                  size: 16,
+                                  color: isSelected
+                                      ? const Color(0xFF6D28D9)
+                                      : Colors.grey,
+                                ),
+                                label: Text(fName),
+                                selected: isSelected,
+                                showCheckmark: false,
+                                onSelected: (val) {
+                                  setState(() {
+                                    _selectedFilterFolderId = val ? fId : null;
+                                  });
+                                },
+                                selectedColor:
+                                    const Color(0xFF6D28D9).withOpacity(0.12),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                  side: BorderSide(
+                                    color: isSelected
+                                        ? const Color(0xFF6D28D9)
+                                            .withOpacity(0.3)
+                                        : Colors.grey.withOpacity(0.2),
+                                  ),
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+                  if (provider.availableTags.isNotEmpty) ...[
+                    const Padding(
+                      padding: EdgeInsets.only(left: 4, bottom: 8),
+                      child: Text(
+                        'Etiquetas',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.blueGrey,
+                        ),
+                      ),
+                    ),
+                    SizedBox(
+                      height: 38,
+                      child: ListView(
+                        scrollDirection: Axis.horizontal,
+                        physics: const BouncingScrollPhysics(),
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.only(right: 8),
+                            child: FilterChip(
+                              label: const Text('Todas'),
+                              selected: _selectedFilterTagId == null,
+                              showCheckmark: false,
+                              onSelected: (_) {
+                                setState(() => _selectedFilterTagId = null);
+                              },
+                              selectedColor:
+                                  const Color(0xFF6D28D9).withOpacity(0.12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                side: BorderSide(
+                                  color: _selectedFilterTagId == null
+                                      ? const Color(0xFF6D28D9).withOpacity(0.3)
+                                      : Colors.grey.withOpacity(0.2),
+                                ),
+                              ),
+                            ),
+                          ),
+                          ...provider.availableTags.map((tag) {
+                            final tagId = tag['id'];
+                            final tagName = tag['name'] ?? 'Tag';
+                            final isSelected = _selectedFilterTagId == tagId;
+                            return Padding(
+                              padding: const EdgeInsets.only(right: 8),
+                              child: FilterChip(
+                                label: Text(tagName),
+                                selected: isSelected,
+                                showCheckmark: false,
+                                onSelected: (val) {
+                                  setState(() {
+                                    _selectedFilterTagId = val ? tagId : null;
+                                  });
+                                },
+                                selectedColor:
+                                    const Color(0xFF6D28D9).withOpacity(0.12),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                  side: BorderSide(
+                                    color: isSelected
+                                        ? const Color(0xFF6D28D9)
+                                            .withOpacity(0.3)
+                                        : Colors.grey.withOpacity(0.2),
+                                  ),
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                        ],
+                      ),
+                    ),
+                  ],
+                ],
+              );
+            },
+          ),
+          const SizedBox(height: 12),
           Expanded(
             child: Consumer<AudioRecorderProvider>(
               builder: (context, provider, child) {
@@ -591,11 +790,41 @@ class _LibraryPageState extends State<LibraryPage> {
                     ),
                   );
                 }
-                if (provider.recordings.isEmpty) {
+                var filteredRecordings = provider.recordings;
+
+                // Aplicar filtro de TAG
+                if (_selectedFilterTagId != null) {
+                  filteredRecordings = filteredRecordings
+                      .where((rec) => rec.tagIds.contains(_selectedFilterTagId))
+                      .toList();
+                }
+
+                // Aplicar filtro de FOLDER
+                if (_selectedFilterFolderId != null) {
+                  filteredRecordings = filteredRecordings
+                      .where((rec) => rec.folderId == _selectedFilterFolderId)
+                      .toList();
+                }
+
+                if (filteredRecordings.isEmpty) {
                   return Center(
-                    child: Text(
-                      l10n.translate('libraryEmpty'),
-                      style: const TextStyle(color: Colors.blueGrey),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.filter_list_off,
+                          size: 48,
+                          color: Colors.grey.withOpacity(0.5),
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          (_selectedFilterTagId == null &&
+                                  _selectedFilterFolderId == null)
+                              ? l10n.translate('libraryEmpty')
+                              : 'No hay audios con estos filtros.',
+                          style: const TextStyle(color: Colors.blueGrey),
+                        ),
+                      ],
                     ),
                   );
                 }
@@ -608,7 +837,7 @@ class _LibraryPageState extends State<LibraryPage> {
                 final groupedByFolder = <String, List<Recording>>{};
                 final ungroupedRecordings = <Recording>[];
 
-                for (final recording in provider.recordings) {
+                for (final recording in filteredRecordings) {
                   final folderId = recording.folderId;
                   if (folderId != null && foldersById.containsKey(folderId)) {
                     groupedByFolder

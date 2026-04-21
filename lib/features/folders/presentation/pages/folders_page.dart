@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 
+import '../../../../config/api_config.dart';
 import '../../../../config/service_locator.dart';
 import '../../../../core/errors/request_error_mapper.dart';
 import '../../../../core/services/shared_prefs_service.dart';
@@ -20,7 +21,7 @@ class FoldersPage extends StatefulWidget {
 }
 
 class _FoldersPageState extends State<FoldersPage> {
-  static const String _baseUrl = 'http://18.223.30.63:5000';
+  static const String _baseUrl = ApiConfig.baseUrl;
 
   final TextEditingController _folderController = TextEditingController();
   final List<_FolderItem> _folders = <_FolderItem>[];

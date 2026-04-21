@@ -76,5 +76,21 @@
   "planFeatBiz1": "Grabaciones ilimitadas",
   "planFeatBiz2": "IA Avanzada sin límites",
   "planFeatBiz3": "Soporte dedicado 24/7",
-  "planFeatBiz4": "Exportación a PDF"
+  "planFeatBiz4": "Exportación a PDF",
+  "payTitle": "Completar pago",
+  "paySubtitle": "Simulación de pago seguro",
+  "payPlanLabel": "Plan",
+  "payTotalLabel": "Total",
+  "payCardNumber": "Número de tarjeta",
+  "payCardHolder": "Titular de la tarjeta",
+  "payExpiry": "Vencimiento (MM/AA)",
+  "payCvv": "CVV",
+  "payBtn": "Pagar ahora",
+  "payProcessing": "Procesando...",
+  "paySuccess": "¡Pago aprobado!",
+  "paySuccessMsg": "Tu plan ha sido activado correctamente",
+  "payErrCard": "Número de tarjeta inválido (16 dígitos)",
+  "payErrHolder": "Ingresa el nombre del titular",
+  "payErrExpiry": "Fecha inválida (MM/AA)",
+  "payErrCvv": "CVV inválido (3 dígitos)"
 }

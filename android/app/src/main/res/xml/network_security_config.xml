@@ -2,6 +2,6 @@
 <network-security-config>
 	<base-config cleartextTrafficPermitted="true" />
 	<domain-config cleartextTrafficPermitted="true">
-		<domain includeSubdomains="false">18.223.30.63</domain>
+		<domain includeSubdomains="false">mindvoice-ai.com</domain>
 	</domain-config>
 </network-security-config>

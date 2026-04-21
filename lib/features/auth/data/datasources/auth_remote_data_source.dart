@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:jwt_decoder/jwt_decoder.dart';
+import '../../../../config/api_config.dart';
 import '../../../../core/errors/exceptions.dart';
 import '../models/user_model.dart';
 
@@ -24,7 +25,7 @@ abstract class AuthRemoteDataSource {
 
 class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   final http.Client client;
-  final String baseUrl = 'http://18.223.30.63:5000';
+  final String baseUrl = ApiConfig.baseUrl;
 
   AuthRemoteDataSourceImpl({required this.client});
 

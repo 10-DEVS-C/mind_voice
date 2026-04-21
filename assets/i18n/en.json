@@ -76,5 +76,21 @@
     "planFeatBiz1": "Unlimited recordings",
     "planFeatBiz2": "Unlimited Advanced AI",
     "planFeatBiz3": "24/7 Dedicated support",
-    "planFeatBiz4": "PDF Export"
+    "planFeatBiz4": "PDF Export",
+    "payTitle": "Complete payment",
+    "paySubtitle": "Simulated secure payment",
+    "payPlanLabel": "Plan",
+    "payTotalLabel": "Total",
+    "payCardNumber": "Card number",
+    "payCardHolder": "Cardholder name",
+    "payExpiry": "Expiry (MM/YY)",
+    "payCvv": "CVV",
+    "payBtn": "Pay now",
+    "payProcessing": "Processing...",
+    "paySuccess": "Payment approved!",
+    "paySuccessMsg": "Your plan has been activated successfully",
+    "payErrCard": "Invalid card number (16 digits)",
+    "payErrHolder": "Enter the cardholder name",
+    "payErrExpiry": "Invalid date (MM/YY)",
+    "payErrCvv": "Invalid CVV (3 digits)"
 }

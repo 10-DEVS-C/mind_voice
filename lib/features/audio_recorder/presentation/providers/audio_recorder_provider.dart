@@ -11,6 +11,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:mind_voice/core/errors/request_error_mapper.dart';
 import 'package:mind_voice/core/services/shared_prefs_service.dart';
 import 'package:mind_voice/features/audio_recorder/domain/entities/recording.dart';
+import 'package:mind_voice/config/api_config.dart';
 import 'package:mind_voice/features/audio_recorder/domain/usecases/audio_usecases.dart';
 
 class AudioRecorderProvider extends ChangeNotifier {
@@ -32,7 +33,7 @@ class AudioRecorderProvider extends ChangeNotifier {
   final Set<String> _transcribingIds = <String>{};
   final AudioRecorder _audioRecorder = AudioRecorder();
   DateTime? _startTime;
-  static const String _baseUrl = 'http://18.223.30.63:5000';
+  static const String _baseUrl = ApiConfig.baseUrl;
   static const List<String> _dummyMarkers = <String>[
     'transcripcion dummy',
     'transcripción dummy',

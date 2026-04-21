@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:mind_voice/features/audio_recorder/domain/entities/recording.dart';
+import 'package:mind_voice/features/audio_recorder/presentation/pages/recording_detail_page.dart';
 
 class RecordingTile extends StatelessWidget {
   final Recording recording;
@@ -34,10 +35,12 @@ class RecordingTile extends StatelessWidget {
         subtitle: Text(dateStr),
         trailing: Text(durationStr),
         onTap: () {
-          // Play audio
-          ScaffoldMessenger.of(
+          Navigator.push(
             context,
-          ).showSnackBar(SnackBar(content: Text('Playing ${recording.name}')));
+            MaterialPageRoute(
+              builder: (_) => RecordingDetailPage(recording: recording),
+            ),
+          );
         },
       ),
     );

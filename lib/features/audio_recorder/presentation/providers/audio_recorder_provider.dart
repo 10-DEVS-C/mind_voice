@@ -42,14 +42,20 @@ class AudioRecorderProvider extends ChangeNotifier {
   ];
 
   Map<String, dynamic>? _lastAiResult;
+  String? _lastAiAnalysisId;
   bool _isAnalyzing = false;
+  List<Map<String, dynamic>> _mindmaps = [];
+  bool _isLoadingMindmaps = false;
 
   List<Recording> get recordings => _recordings;
   List<Map<String, String>> get availableTags => _availableTags;
   Map<String, dynamic>? get lastAiResult => _lastAiResult;
+  String? get lastAiAnalysisId => _lastAiAnalysisId;
   List<Map<String, String>> get availableFolders => _availableFolders;
+  List<Map<String, dynamic>> get mindmaps => _mindmaps;
   bool get isLoading => _isLoading;
   bool get isAnalyzing => _isAnalyzing;
+  bool get isLoadingMindmaps => _isLoadingMindmaps;
   bool get isLoadingTaxonomy => _isLoadingTaxonomy;
   String? get errorMessage => _errorMessage;
   bool get forceLogoutRequired => _forceLogoutRequired;
@@ -968,6 +974,7 @@ class AudioRecorderProvider extends ChangeNotifier {
           if (data.isNotEmpty) {
             final firstAnalysis = data.first as Map<String, dynamic>;
             if (firstAnalysis.containsKey('result')) {
+              _lastAiAnalysisId = firstAnalysis['_id']?.toString();
               _lastAiResult = firstAnalysis['result'] as Map<String, dynamic>;
               _errorMessage = null;
               return _lastAiResult;
@@ -1023,8 +1030,137 @@ class AudioRecorderProvider extends ChangeNotifier {
     }
   }
 
-  bool _hasRealTranscription(String? transcription) {
-    final value = transcription?.trim();
+  // ── Transcription update ─────────────────────────────────────────────────
+
+  Future<bool> updateTranscriptionText(
+    String recordingId,
+    String newText,
+    String userId,
+  ) async {
+    final index = _recordings.indexWhere((r) => r.id == recordingId);
+    if (index == -1) return false;
+
+    final recording = _recordings[index];
+    final transcriptionId = recording.apiTranscriptionId;
+    if (transcriptionId == null || transcriptionId.isEmpty) return false;
+
+    final token = _sharedPrefsService.getToken();
+    if (token == null || token.isEmpty) return false;
+
+    try {
+      final response = await _httpClient.put(
+        Uri.parse('$_baseUrl/transcriptions/$transcriptionId'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({'text': newText}),
+      );
+
+      if (response.statusCode != 200) {
+        _markHttpError(response.statusCode, 'No se pudo actualizar la transcripción.');
+        notifyListeners();
+        return false;
+      }
+
+      final updated = Recording(
+        id: recording.id,
+        path: recording.path,
+        name: recording.name,
+        date: recording.date,
+        duration: recording.duration,
+        apiAudioId: recording.apiAudioId,
+        apiTranscriptionId: recording.apiTranscriptionId,
+        folderId: recording.folderId,
+        tagIds: recording.tagIds,
+        transcription: newText,
+      );
+      _recordings[index] = updated;
+      await _updateRecordingUseCase(updated, userId);
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _markNetworkException(e);
+      notifyListeners();
+      return false;
+    }
+  }
+
+  // ── AI Analysis update ────────────────────────────────────────────────────
+
+  Future<bool> updateAiAnalysis(
+    String analysisId,
+    Map<String, dynamic> result,
+  ) async {
+    final token = _sharedPrefsService.getToken();
+    if (token == null || token.isEmpty) return false;
+
+    try {
+      final response = await _httpClient.put(
+        Uri.parse('$_baseUrl/ai-analyses/$analysisId'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({'result': result}),
+      );
+
+      if (response.statusCode == 403) {
+        _errorMessage = 'Esta función requiere un plan profesional o business.';
+        notifyListeners();
+        return false;
+      }
+
+      if (response.statusCode != 200) {
+        _markHttpError(response.statusCode, 'No se pudo actualizar el análisis.');
+        notifyListeners();
+        return false;
+      }
+
+      _lastAiResult = result;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _markNetworkException(e);
+      notifyListeners();
+      return false;
+    }
+  }
+
+  // ── Mindmaps ──────────────────────────────────────────────────────────────
+
+  Future<void> loadMindmaps() async {
+    _isLoadingMindmaps = true;
+    notifyListeners();
+
+    final token = _sharedPrefsService.getToken();
+    if (token == null || token.isEmpty) {
+      _isLoadingMindmaps = false;
+      notifyListeners();
+      return;
+    }
+
+    try {
+      final response = await _httpClient.get(
+        Uri.parse('$_baseUrl/mindmaps/'),
+        headers: {'Authorization': 'Bearer $token'},
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        _mindmaps = data.whereType<Map<String, dynamic>>().toList();
+      } else {
+        _markHttpError(response.statusCode, 'No se pudieron cargar los mapas mentales.');
+      }
+    } catch (e) {
+      _markNetworkException(e);
+    } finally {
+      _isLoadingMindmaps = false;
+      notifyListeners();
+    }
+  }
+
+  bool _hasRealTranscription(String? transcription) {    final value = transcription?.trim();
     if (value == null || value.isEmpty) {
       return false;
     }

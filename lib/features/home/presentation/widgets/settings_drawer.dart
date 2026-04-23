@@ -7,6 +7,7 @@ import '../../../audio_recorder/presentation/providers/audio_recorder_provider.d
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../auth/presentation/pages/login_page.dart';
 import '../../../folders/presentation/pages/folders_page.dart';
+import '../../../insights/presentation/pages/insights_page.dart';
 import '../../../tags/presentation/pages/tags_page.dart';
 import '../pages/plans_page.dart';
 
@@ -34,6 +35,15 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
     Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => const FoldersPage()),
     );
+  }
+
+  Future<void> _openSharedMindmapFromLink(BuildContext context) async {
+    Navigator.of(context).pop();
+    await Future<void>.delayed(const Duration(milliseconds: 120));
+    if (!context.mounted) {
+      return;
+    }
+    await openSharedMindmapFromLinkDialog(context);
   }
 
   Future<void> _showEditProfileSheet(BuildContext context) async {
@@ -292,6 +302,27 @@ class _SettingsDrawerState extends State<SettingsDrawer> {
                     subtitle: const Text('Crear y ver carpetas'),
                     trailing: const Icon(Icons.chevron_right_rounded),
                     onTap: () => _openFoldersPage(context),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                _buildSectionTitle(context, 'Mapa mental'),
+                const SizedBox(height: 8),
+                Container(
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).cardColor,
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? AppColors.darkBorder
+                          : AppColors.lightBorder,
+                    ),
+                  ),
+                  child: ListTile(
+                    leading: const Icon(Icons.link_outlined),
+                    title: const Text('Abrir mapa por link'),
+                    subtitle: const Text('Pegar link y abrir mapa compartido'),
+                    trailing: const Icon(Icons.chevron_right_rounded),
+                    onTap: () => _openSharedMindmapFromLink(context),
                   ),
                 ),
                 const SizedBox(height: 24),

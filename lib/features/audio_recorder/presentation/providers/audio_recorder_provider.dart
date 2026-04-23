@@ -46,6 +46,7 @@ class AudioRecorderProvider extends ChangeNotifier {
   bool _isAnalyzing = false;
   List<Map<String, dynamic>> _mindmaps = [];
   bool _isLoadingMindmaps = false;
+  static const String _mindmapDraftPrefix = 'mindmap_draft_v1_';
 
   List<Recording> get recordings => _recordings;
   List<Map<String, String>> get availableTags => _availableTags;
@@ -1158,6 +1159,160 @@ class AudioRecorderProvider extends ChangeNotifier {
       _isLoadingMindmaps = false;
       notifyListeners();
     }
+  }
+
+  Future<String?> upsertSharedMindmap({
+    String? mindmapId,
+    required String title,
+    required List<Map<String, dynamic>> flatNodes,
+    String? documentId,
+  }) async {
+    final token = _sharedPrefsService.getToken();
+    if (token == null || token.isEmpty) {
+      return null;
+    }
+
+    final safeDocumentId = _normalizeObjectId(documentId) ??
+        _generatePseudoObjectId();
+    final payload = <String, dynamic>{
+      'documentId': safeDocumentId,
+      'nodes': <String, dynamic>{
+        'title': title,
+        'flatNodes': flatNodes,
+      },
+    };
+
+    try {
+      final isUpdate = mindmapId != null && mindmapId.isNotEmpty;
+      final uri = isUpdate
+          ? Uri.parse('$_baseUrl/mindmaps/$mindmapId')
+          : Uri.parse('$_baseUrl/mindmaps/');
+
+      final response = isUpdate
+          ? await _httpClient.put(
+              uri,
+              headers: {
+                'Authorization': 'Bearer $token',
+                'Content-Type': 'application/json',
+              },
+              body: jsonEncode(payload),
+            )
+          : await _httpClient.post(
+              uri,
+              headers: {
+                'Authorization': 'Bearer $token',
+                'Content-Type': 'application/json',
+              },
+              body: jsonEncode(payload),
+            );
+
+      if (response.statusCode != 200 && response.statusCode != 201) {
+        _markHttpError(response.statusCode, 'No se pudo guardar el mapa compartido.');
+        notifyListeners();
+        return null;
+      }
+
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      return data['_id']?.toString();
+    } catch (e) {
+      _markNetworkException(e);
+      notifyListeners();
+      return null;
+    }
+  }
+
+  Future<Map<String, dynamic>?> fetchMindmapById(String mindmapId) async {
+    final token = _sharedPrefsService.getToken();
+    if (token == null || token.isEmpty || mindmapId.isEmpty) {
+      return null;
+    }
+
+    try {
+      final response = await _httpClient.get(
+        Uri.parse('$_baseUrl/mindmaps/$mindmapId'),
+        headers: {'Authorization': 'Bearer $token'},
+      );
+
+      if (response.statusCode != 200) {
+        _markHttpError(response.statusCode, 'No se pudo abrir el mapa compartido.');
+        notifyListeners();
+        return null;
+      }
+
+      return jsonDecode(response.body) as Map<String, dynamic>;
+    } catch (e) {
+      _markNetworkException(e);
+      notifyListeners();
+      return null;
+    }
+  }
+
+  Future<void> saveLocalMindmapDraft({
+    required String identifier,
+    required String title,
+    required List<Map<String, dynamic>> flatNodes,
+    String? sharedMindmapId,
+  }) async {
+    final key = _mindmapDraftKey(identifier);
+    final payload = <String, dynamic>{
+      'identifier': identifier,
+      'title': title,
+      'flatNodes': flatNodes,
+      'sharedMindmapId': sharedMindmapId,
+      'updatedAt': DateTime.now().toUtc().toIso8601String(),
+    };
+    await _sharedPrefsService.prefs.setString(key, jsonEncode(payload));
+  }
+
+  Map<String, dynamic>? loadLocalMindmapDraft(String identifier) {
+    final key = _mindmapDraftKey(identifier);
+    final raw = _sharedPrefsService.prefs.getString(key);
+    if (raw == null || raw.isEmpty) {
+      return null;
+    }
+
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is Map<String, dynamic>) {
+        return decoded;
+      }
+    } catch (_) {}
+
+    return null;
+  }
+
+  String _mindmapDraftKey(String identifier) {
+    final normalized = identifier
+        .trim()
+        .toLowerCase()
+        .replaceAll(RegExp(r'[^a-z0-9_]+'), '_');
+    return '$_mindmapDraftPrefix$normalized';
+  }
+
+  String? _normalizeObjectId(String? value) {
+    if (value == null) {
+      return null;
+    }
+    final candidate = value.trim();
+    if (candidate.isEmpty) {
+      return null;
+    }
+    final objectIdRegex = RegExp(r'^[0-9a-fA-F]{24}$');
+    if (!objectIdRegex.hasMatch(candidate)) {
+      return null;
+    }
+    return candidate;
+  }
+
+  String _generatePseudoObjectId() {
+    final micros = DateTime.now().microsecondsSinceEpoch
+        .toRadixString(16)
+        .padLeft(16, '0');
+    final nonce = (DateTime.now().millisecondsSinceEpoch.hashCode & 0xffffffff)
+        .toUnsigned(32)
+        .toRadixString(16)
+        .padLeft(8, '0');
+    return (micros + nonce).substring(0, 24);
   }
 
   bool _hasRealTranscription(String? transcription) {    final value = transcription?.trim();

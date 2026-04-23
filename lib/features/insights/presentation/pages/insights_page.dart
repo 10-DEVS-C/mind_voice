@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -7,6 +8,171 @@ import 'package:share_plus/share_plus.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/services/pdf_export_service.dart';
 import '../../../../features/audio_recorder/presentation/providers/audio_recorder_provider.dart';
+
+Future<void> openSharedMindmapFromLinkDialog(BuildContext context) async {
+  final controller = TextEditingController();
+  final rawLink = await showDialog<String>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: const Text('Abrir mapa desde link'),
+      content: TextField(
+        controller: controller,
+        maxLines: 3,
+        decoration: const InputDecoration(
+          hintText: 'Pega aquí el link mindvoice://mindmap?...',
+          border: OutlineInputBorder(),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(ctx).pop(),
+          child: const Text('Cancelar'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.of(ctx).pop(controller.text.trim()),
+          child: const Text('Abrir'),
+        ),
+      ],
+    ),
+  );
+
+  if (rawLink == null || rawLink.isEmpty || !context.mounted) {
+    return;
+  }
+
+  try {
+    final sharedId = _extractMindmapIdFromAnyLinkValue(rawLink);
+    if (sharedId == null || sharedId.isEmpty) {
+      throw const FormatException('Link sin id');
+    }
+
+    final loaded = await context.read<AudioRecorderProvider>().fetchMindmapById(
+          sharedId,
+        );
+    if (loaded == null) {
+      throw const FormatException('No se pudo cargar el mapa remoto.');
+    }
+
+    final dynamic nodesPayload = loaded['nodes'];
+    final rawNodes = _extractRawNodesFromMindmapPayload(nodesPayload);
+    final title = _extractMindmapTitleFromPayload(nodesPayload);
+    final updatedAt = loaded['updatedAt']?.toString();
+    final loadedMindmapId = loaded['_id']?.toString() ?? sharedId;
+
+    if (!context.mounted) {
+      return;
+    }
+
+    final loadedCount = _parseMindMapNodes(rawNodes).length;
+    final loadedText = loadedCount > 0
+        ? 'Mapa mental cargado correctamente ($loadedCount nodos).'
+        : 'Mapa mental cargado, pero no tiene nodos.';
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(loadedText)),
+    );
+
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => _AiMindMapPage(
+          title: title,
+          rawNodes: rawNodes,
+          initialSharedMindmapId: loadedMindmapId,
+          initialRemoteUpdatedAt: updatedAt,
+        ),
+      ),
+    );
+  } catch (e) {
+    if (!context.mounted) {
+      return;
+    }
+    final providerError = context.read<AudioRecorderProvider>().errorMessage;
+    final fallback = e.toString().replaceFirst('Exception: ', '');
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'No se pudo cargar el mapa mental. ${providerError ?? fallback}',
+        ),
+      ),
+    );
+  }
+}
+
+List<dynamic> _extractRawNodesFromMindmapPayload(dynamic nodesPayload) {
+  if (nodesPayload is List) {
+    return nodesPayload;
+  }
+
+  if (nodesPayload is Map<String, dynamic>) {
+    final candidate = nodesPayload['flatNodes'];
+    if (candidate is List) {
+      return candidate;
+    }
+
+    // Compatibilidad con formato de diccionario por id.
+    final fallback = <Map<String, dynamic>>[];
+    nodesPayload.forEach((key, value) {
+      if (key == 'title' || key == 'flatNodes') {
+        return;
+      }
+      if (value is Map) {
+        final map = value.cast<dynamic, dynamic>();
+        fallback.add(<String, dynamic>{
+          'id': map['id']?.toString() ?? key,
+          'label': map['label']?.toString() ??
+              map['text']?.toString() ??
+              map['title']?.toString() ??
+              key,
+          'parentId': map['parentId']?.toString(),
+        });
+      }
+    });
+
+    return fallback;
+  }
+
+  return const <dynamic>[];
+}
+
+String _extractMindmapTitleFromPayload(dynamic nodesPayload) {
+  if (nodesPayload is Map<String, dynamic>) {
+    final title = nodesPayload['title']?.toString();
+    if (title != null && title.trim().isNotEmpty) {
+      return title;
+    }
+  }
+  return 'Mapa compartido';
+}
+
+String? _extractMindmapIdFromAnyLinkValue(String rawLink) {
+  final uri = Uri.tryParse(rawLink);
+  if (uri == null) {
+    return null;
+  }
+
+  final directId = uri.queryParameters['id'];
+  if (directId != null && directId.isNotEmpty) {
+    return directId;
+  }
+
+  if (uri.pathSegments.length >= 2 && uri.pathSegments.first == 'mindmap') {
+    final pathId = uri.pathSegments[1];
+    if (pathId.isNotEmpty) {
+      return pathId;
+    }
+  }
+
+  final wrapped =
+      uri.queryParameters['q'] ?? uri.queryParameters['url'] ?? uri.queryParameters['link'];
+  if (wrapped != null && wrapped.isNotEmpty) {
+    final wrappedUri = Uri.tryParse(Uri.decodeComponent(wrapped));
+    final wrappedId = wrappedUri?.queryParameters['id'];
+    if (wrappedId != null && wrappedId.isNotEmpty) {
+      return wrappedId;
+    }
+  }
+
+  return null;
+}
 
 class InsightsPage extends StatelessWidget {
   const InsightsPage({super.key});
@@ -333,6 +499,15 @@ class InsightsPage extends StatelessWidget {
               ),
             ],
           ),
+          const SizedBox(height: 12),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: FilledButton.tonalIcon(
+              onPressed: () => openSharedMindmapFromLinkDialog(context),
+              icon: const Icon(Icons.link_outlined),
+              label: const Text('Abrir mapa por link'),
+            ),
+          ),
 
           if (tags.isNotEmpty) ...[
             const SizedBox(height: 16),
@@ -411,10 +586,14 @@ class InsightsPage extends StatelessWidget {
 class _AiMindMapPage extends StatefulWidget {
   final String title;
   final List<dynamic> rawNodes;
+  final String? initialSharedMindmapId;
+  final String? initialRemoteUpdatedAt;
 
   const _AiMindMapPage({
     required this.title,
     required this.rawNodes,
+    this.initialSharedMindmapId,
+    this.initialRemoteUpdatedAt,
   });
 
   @override
@@ -423,10 +602,16 @@ class _AiMindMapPage extends StatefulWidget {
 
 class _AiMindMapPageState extends State<_AiMindMapPage> {
   late List<_EditableMindMapNode> _nodes;
+  String? _sharedMindmapId;
+  String? _lastRemoteUpdatedAt;
+  Timer? _pollTimer;
+  bool _isPushing = false;
 
   @override
   void initState() {
     super.initState();
+    _sharedMindmapId = widget.initialSharedMindmapId;
+    _lastRemoteUpdatedAt = widget.initialRemoteUpdatedAt;
     final parsed = _parseMindMapNodes(widget.rawNodes);
     _nodes = parsed
         .map(
@@ -437,6 +622,18 @@ class _AiMindMapPageState extends State<_AiMindMapPage> {
           ),
         )
         .toList();
+
+    _restoreLocalDraftIfAny();
+
+    if (_sharedMindmapId != null && _sharedMindmapId!.isNotEmpty) {
+      _startPolling();
+    }
+  }
+
+  @override
+  void dispose() {
+    _pollTimer?.cancel();
+    super.dispose();
   }
 
   @override
@@ -534,43 +731,163 @@ class _AiMindMapPageState extends State<_AiMindMapPage> {
     );
   }
 
-  String _buildShareLink() {
-    final payload = jsonEncode(
-      _nodes
-          .map(
-            (n) => {
-              'id': n.id,
-              'label': n.label,
-              'parentId': n.parentId,
-            },
-          )
-          .toList(),
-    );
-    final encoded = base64UrlEncode(utf8.encode(payload));
+  String _buildDeepLink(String mindmapId) {
     return Uri(
       scheme: 'mindvoice',
       host: 'mindmap',
       queryParameters: {
-        'title': widget.title,
-        'data': encoded,
+        'id': mindmapId,
       },
     ).toString();
   }
 
+  String _buildGoogleRedirectLink(String mindmapId) {
+    final deepLink = _buildDeepLink(mindmapId);
+    return Uri.https(
+      'www.google.com',
+      '/url',
+      <String, String>{
+        'q': deepLink,
+      },
+    ).toString();
+  }
+
+  List<Map<String, dynamic>> _serializeNodes() {
+    return _nodes
+        .map(
+          (n) => {
+            'id': n.id,
+            'label': n.label,
+            'parentId': n.parentId,
+          },
+        )
+        .toList();
+  }
+
+  String _titleDraftIdentifier() => 'title:${widget.title}';
+
+  String _idDraftIdentifier(String id) => 'id:$id';
+
+  void _restoreLocalDraftIfAny() {
+    final provider = context.read<AudioRecorderProvider>();
+
+    Map<String, dynamic>? draft;
+    if (_sharedMindmapId != null && _sharedMindmapId!.isNotEmpty) {
+      draft = provider.loadLocalMindmapDraft(_idDraftIdentifier(_sharedMindmapId!));
+    }
+    draft ??= provider.loadLocalMindmapDraft(_titleDraftIdentifier());
+
+    if (draft == null) {
+      return;
+    }
+
+    final flatNodesRaw = draft['flatNodes'];
+    if (flatNodesRaw is! List) {
+      return;
+    }
+
+    final restored = _parseMindMapNodes(flatNodesRaw)
+        .map(
+          (n) => _EditableMindMapNode(
+            id: n.id,
+            label: n.label,
+            parentId: n.parentId,
+          ),
+        )
+        .toList();
+
+    if (restored.isNotEmpty) {
+      _nodes = restored;
+    }
+
+    final draftSharedId = draft['sharedMindmapId']?.toString();
+    if ((_sharedMindmapId == null || _sharedMindmapId!.isEmpty) &&
+        draftSharedId != null &&
+        draftSharedId.isNotEmpty) {
+      _sharedMindmapId = draftSharedId;
+      _startPolling();
+    }
+  }
+
+  Future<void> _persistLocalDraft() async {
+    final provider = context.read<AudioRecorderProvider>();
+    final payload = _serializeNodes();
+
+    await provider.saveLocalMindmapDraft(
+      identifier: _titleDraftIdentifier(),
+      title: widget.title,
+      flatNodes: payload,
+      sharedMindmapId: _sharedMindmapId,
+    );
+
+    final id = _sharedMindmapId;
+    if (id != null && id.isNotEmpty) {
+      await provider.saveLocalMindmapDraft(
+        identifier: _idDraftIdentifier(id),
+        title: widget.title,
+        flatNodes: payload,
+        sharedMindmapId: id,
+      );
+    }
+  }
+
+  Future<String?> _ensureSharedMindmapId() async {
+    final provider = context.read<AudioRecorderProvider>();
+    final id = await provider.upsertSharedMindmap(
+      mindmapId: _sharedMindmapId,
+      title: widget.title,
+      flatNodes: _serializeNodes(),
+    );
+    if (id != null && id.isNotEmpty) {
+      _sharedMindmapId = id;
+      _startPolling();
+      return id;
+    }
+    return null;
+  }
+
   Future<void> _copyLink() async {
-    final link = _buildShareLink();
-    await Clipboard.setData(ClipboardData(text: link));
+    final id = await _ensureSharedMindmapId();
+    if (id == null) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No se pudo generar el link compartido.')),
+      );
+      return;
+    }
+
+    final webLink = _buildGoogleRedirectLink(id);
+    final deepLink = _buildDeepLink(id);
+    final payload = 'Web: $webLink\nApp: $deepLink';
+    await Clipboard.setData(ClipboardData(text: payload));
     if (!mounted) {
       return;
     }
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Link copiado al portapapeles.')),
+      const SnackBar(
+        content: Text('Links web y app copiados al portapapeles.'),
+      ),
     );
   }
 
   Future<void> _shareMindMap() async {
-    final link = _buildShareLink();
-    final text = 'Mapa mental: ${widget.title}\n$link';
+    final id = await _ensureSharedMindmapId();
+    if (id == null) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No se pudo compartir el mapa.')),
+      );
+      return;
+    }
+
+    final webLink = _buildGoogleRedirectLink(id);
+    final deepLink = _buildDeepLink(id);
+    final text =
+      'Mapa mental: ${widget.title}\nWeb: $webLink\nApp: $deepLink';
     await Share.share(text);
   }
 
@@ -606,11 +923,48 @@ class _AiMindMapPageState extends State<_AiMindMapPage> {
     }
 
     try {
-      final uri = Uri.parse(rawLink);
-      final encoded = uri.queryParameters['data'];
-      if (encoded == null || encoded.isEmpty) {
-        throw const FormatException('Link sin data.');
+      final uri = Uri.tryParse(rawLink);
+      final sharedId = _extractMindmapIdFromAnyLink(rawLink);
+
+      if (sharedId != null && sharedId.isNotEmpty) {
+        final loaded = await context.read<AudioRecorderProvider>().fetchMindmapById(
+              sharedId,
+            );
+        if (loaded == null) {
+          throw const FormatException('No se pudo cargar el mapa remoto.');
+        }
+
+        final loadedNodes = _extractNodesFromMindmapResponse(loaded);
+        _lastRemoteUpdatedAt = loaded['updatedAt']?.toString();
+        _sharedMindmapId = loaded['_id']?.toString() ?? sharedId;
+        _startPolling();
+
+        if (!mounted) {
+          return;
+        }
+
+        setState(() {
+          _nodes = loadedNodes;
+        });
+        final loadedCount = loadedNodes.length;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              loadedCount > 0
+                  ? 'Mapa mental cargado correctamente ($loadedCount nodos).'
+                  : 'Mapa mental cargado, pero no tiene nodos.',
+            ),
+          ),
+        );
+        return;
       }
+
+      // Compatibilidad con links antiguos largos.
+      final encoded = uri?.queryParameters['data'];
+      if (encoded == null || encoded.isEmpty) {
+        throw const FormatException('Link sin id o data.');
+      }
+
       final decoded = utf8.decode(base64Url.decode(encoded));
       final dynamic parsed = jsonDecode(decoded);
       if (parsed is! List) {
@@ -634,15 +988,153 @@ class _AiMindMapPageState extends State<_AiMindMapPage> {
       setState(() {
         _nodes = loaded;
       });
+      final loadedCount = loaded.length;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Mapa importado desde el link.')),
+        SnackBar(
+          content: Text(
+            loadedCount > 0
+                ? 'Mapa mental cargado correctamente ($loadedCount nodos).'
+                : 'Mapa mental cargado, pero no tiene nodos.',
+          ),
+        ),
       );
-    } catch (_) {
+    } catch (e) {
       if (!mounted) {
         return;
       }
+      final providerError = context.read<AudioRecorderProvider>().errorMessage;
+      final fallback = e.toString().replaceFirst('Exception: ', '');
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No se pudo abrir el link del mapa.')),
+        SnackBar(
+          content: Text(
+            'No se pudo cargar el mapa mental. ${providerError ?? fallback}',
+          ),
+        ),
+      );
+    }
+  }
+
+  String? _extractMindmapIdFromAnyLink(String rawLink) {
+    final uri = Uri.tryParse(rawLink);
+    if (uri == null) {
+      return null;
+    }
+
+    final directId = uri.queryParameters['id'];
+    if (directId != null && directId.isNotEmpty) {
+      return directId;
+    }
+
+    if (uri.pathSegments.length >= 2 && uri.pathSegments.first == 'mindmap') {
+      final pathId = uri.pathSegments[1];
+      if (pathId.isNotEmpty) {
+        return pathId;
+      }
+    }
+
+    final wrapped =
+        uri.queryParameters['q'] ?? uri.queryParameters['url'] ?? uri.queryParameters['link'];
+    if (wrapped != null && wrapped.isNotEmpty) {
+      final wrappedUri = Uri.tryParse(Uri.decodeComponent(wrapped));
+      final wrappedId = wrappedUri?.queryParameters['id'];
+      if (wrappedId != null && wrappedId.isNotEmpty) {
+        return wrappedId;
+      }
+    }
+
+    return null;
+  }
+
+  List<_EditableMindMapNode> _extractNodesFromMindmapResponse(
+    Map<String, dynamic> response,
+  ) {
+    final dynamic nodesPayload = response['nodes'];
+    final raw = _extractRawNodesFromMindmapPayload(nodesPayload);
+
+    return _parseMindMapNodes(raw)
+        .map(
+          (n) => _EditableMindMapNode(
+            id: n.id,
+            label: n.label,
+            parentId: n.parentId,
+          ),
+        )
+        .toList();
+  }
+
+  void _startPolling() {
+    _pollTimer?.cancel();
+    _pollTimer = Timer.periodic(const Duration(seconds: 4), (_) {
+      unawaited(_pullRemoteChanges());
+    });
+  }
+
+  Future<void> _pullRemoteChanges() async {
+    if (_isPushing) {
+      return;
+    }
+    final id = _sharedMindmapId;
+    if (id == null || id.isEmpty) {
+      return;
+    }
+
+    final loaded = await context.read<AudioRecorderProvider>().fetchMindmapById(id);
+    if (loaded == null) {
+      return;
+    }
+
+    final updatedAt = loaded['updatedAt']?.toString();
+    if (updatedAt != null && updatedAt == _lastRemoteUpdatedAt) {
+      return;
+    }
+
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _nodes = _extractNodesFromMindmapResponse(loaded);
+      _lastRemoteUpdatedAt = updatedAt;
+    });
+  }
+
+  Future<void> _pushSharedChanges() async {
+    if (_isPushing) {
+      return;
+    }
+
+    _isPushing = true;
+    final hadId = _sharedMindmapId != null && _sharedMindmapId!.isNotEmpty;
+    final newId = await context.read<AudioRecorderProvider>().upsertSharedMindmap(
+          mindmapId: _sharedMindmapId,
+          title: widget.title,
+          flatNodes: _serializeNodes(),
+        );
+    _isPushing = false;
+
+    if (newId != null && newId.isNotEmpty) {
+      _sharedMindmapId = newId;
+      _startPolling();
+      await _persistLocalDraft();
+      unawaited(_pullRemoteChanges());
+      if (!hadId && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Cambios guardados. Ya puedes compartir el link.'),
+          ),
+        );
+      }
+      return;
+    }
+
+    if (mounted) {
+      final err = context.read<AudioRecorderProvider>().errorMessage;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            err ?? 'No se pudieron guardar los cambios del mapa mental.',
+          ),
+        ),
       );
     }
   }
@@ -681,6 +1173,8 @@ class _AiMindMapPageState extends State<_AiMindMapPage> {
     setState(() {
       node.label = updatedText;
     });
+    unawaited(_persistLocalDraft());
+    unawaited(_pushSharedChanges());
   }
 
   Future<void> _addChildNode(_EditableMindMapNode parent) async {
@@ -724,6 +1218,8 @@ class _AiMindMapPageState extends State<_AiMindMapPage> {
         ),
       );
     });
+    unawaited(_persistLocalDraft());
+    unawaited(_pushSharedChanges());
   }
 
   void _addRootNode() {
@@ -737,6 +1233,8 @@ class _AiMindMapPageState extends State<_AiMindMapPage> {
         ),
       );
     });
+    unawaited(_persistLocalDraft());
+    unawaited(_pushSharedChanges());
   }
 
   void _deleteNode(_EditableMindMapNode node) {
@@ -756,6 +1254,8 @@ class _AiMindMapPageState extends State<_AiMindMapPage> {
     setState(() {
       _nodes.removeWhere((n) => idsToDelete.contains(n.id));
     });
+    unawaited(_persistLocalDraft());
+    unawaited(_pushSharedChanges());
   }
 }
 
